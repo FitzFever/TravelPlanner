@@ -113,20 +113,47 @@ async def main():
                 role="assistant"
             )
 
-    # 阶段2：规划专家团队协作
-    print("\n🔄 阶段2：专家团队开始协作...")
+    # 阶段2：需求广播和专家团队协作
+    print("\n📢 阶段2：向专家团队广播完整需求...")
 
     try:
         # 使用MsgHub进行多Agent协作
         expert_list = list(experts.values())
         async with MsgHub(participants=expert_list + [coordinator]):
-            # 1. 协调员分析用户需求
+
+            # 1. 广播用户需求给所有专家
+            requirements_broadcast = Msg(
+                name="咨询专家",
+                content=f"""📋 **用户需求广播**
+
+{user_requirements}
+
+各位专家请注意：以上是咨询专家收集的完整用户需求。
+请各自根据专业领域准备相应的建议和方案。""",
+                role="assistant"
+            )
+
+            print("📢 正在向所有专家广播用户需求...")
+
+            # 向每个专家广播需求（让他们都接收到完整信息）
+            broadcast_tasks = []
+            for expert in expert_list:
+                task = expert(requirements_broadcast)
+                broadcast_tasks.append(task)
+
+            # 等待所有专家确认接收到需求
+            await asyncio.gather(*broadcast_tasks, return_exceptions=True)
+            print("✅ 需求广播完成，所有专家已接收")
+
+            # 2. 协调员分析和任务分配
             analysis_prompt = f"""用户通过咨询专家收集的完整需求如下：
 
 {user_requirements}
 
-请分析需求的关键信息（目的地、天数、预算、偏好等），然后分配任务给5位专家。"""
+请分析需求的关键信息（目的地、天数、预算、偏好等），然后明确分配任务给5位专家。
+为每位专家制定具体的工作重点和输出要求。"""
 
+            print("🧠 协调员开始分析需求和任务分配...")
             analysis = await coordinator(
                 Msg(
                     name="system",
@@ -135,21 +162,26 @@ async def main():
                 )
             )
 
-            # 2. 专家并行工作
+            # 3. 专家并行工作
+            print("🔄 专家团队开始并行工作...")
             expert_tasks = []
             for expert in expert_list:
-                expert_prompt = f"""基于用户的完整需求：
+                expert_prompt = f"""基于广播的完整用户需求，请根据你的专业领域提供建议：
 
 {user_requirements}
 
-请根据你的专业领域提供建议：
-- 如果你是景点研究专家：深入研究并推荐景点
-- 如果你是路线优化专家：设计最优游览路线
-- 如果你是当地专家：提供文化和美食建议
-- 如果你是住宿专家：推荐合适的住宿选择
-- 如果你是预算分析专家：制定详细的费用分析
+**你的专业职责：**
+- 如果你是景点研究专家：深入研究并推荐景点，包括热度、评价、最佳游览时间
+- 如果你是路线优化专家：设计最优游览路线，考虑地理位置和交通便利性
+- 如果你是当地专家：提供文化和美食建议，以及当地特色体验
+- 如果你是住宿专家：推荐合适的住宿选择，考虑位置、价格、服务
+- 如果你是预算分析专家：制定详细的费用分析和不同档次方案
 
-请使用工具获取准确信息，给出专业建议。"""
+**要求：**
+1. 使用你的工具获取准确的实时信息
+2. 提供具体、可执行的专业建议
+3. 考虑用户的预算和偏好限制
+4. 给出明确的推荐理由"""
 
                 # 创建任务但不等待
                 task = expert(Msg(
@@ -162,7 +194,7 @@ async def main():
             # 等待所有专家完成（即使有错误也继续）
             expert_results = await asyncio.gather(*expert_tasks, return_exceptions=True)
 
-            # 3. 协调员整合方案
+            # 4. 协调员整合方案
             expert_advice_parts = []
             for i, result in enumerate(expert_results):
                 if isinstance(result, Exception):
