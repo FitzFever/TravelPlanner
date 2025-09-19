@@ -1,0 +1,25 @@
+# AgentScope - 从 PyPI 安装
+agentscope>=0.1.0
+
+# Core web framework - 已验证兼容版本
+fastapi>=0.115.0
+uvicorn>=0.31.1
+websockets>=13.0.0
+
+# Pydantic - 已验证兼容版本
+pydantic>=2.11.0,<3.0.0
+pydantic-settings>=2.5.2
+
+# MCP - AgentScope兼容版本
+mcp>=1.13.0
+
+# 其他核心依赖
+python-multipart>=0.0.9
+aiofiles>=23.2.1
+requests>=2.25.0
+anyio>=4.5
+
+# 兼容性依赖
+starlette>=0.40.0
+httpx>=0.27.1
+jsonschema>=4.20.0
