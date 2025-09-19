@@ -24,6 +24,7 @@
 ```
 
 ## 小红书
+- https://github.com/jobsonlook/xhs-mcp
 ```json
 {
   "command": "uv",
