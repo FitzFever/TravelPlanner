@@ -79,7 +79,7 @@ async def main():
 请告诉我，您想开始规划自驾游了吗？"""
 
     msg = Msg(
-        name="自驾游咨询专家",
+        name="咨询专家",
         content=welcome_msg,
         role="assistant"
     )
@@ -119,7 +119,7 @@ async def main():
             traceback.print_exc()
             # 继续咨询
             msg = Msg(
-                name="自驾游咨询专家",
+                name="咨询专家",
                 content="抱歉，刚才出现了一些问题。请重新告诉我您的自驾游需求。",
                 role="assistant"
             )
@@ -134,7 +134,7 @@ async def main():
 
             # 1. 广播自驾游用户需求给所有专家
             requirements_broadcast = Msg(
-                name="自驾游咨询专家",
+                name="咨询专家",
                 content=f"""🚗 **自驾游需求广播**
 
 {user_requirements}
@@ -214,7 +214,7 @@ async def main():
 
                 # 创建任务但不等待
                 task = expert(Msg(
-                    name="自驾游协调员",
+                    name="coordinator",
                     content=expert_prompt,
                     role="assistant"
                 ))
@@ -332,7 +332,7 @@ async def main():
                 import traceback
                 traceback.print_exc()
                 msg = Msg(
-                    name="自驾游规划师",
+                    name="旅行规划师",
                     content="抱歉，刚才出现了一些问题。请重新告诉我您的自驾游需求。",
                     role="assistant"
                 )
