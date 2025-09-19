@@ -13,6 +13,7 @@ from agentscope.memory import InMemoryMemory
 from formatter import KimiMultiAgentFormatter, SafeAnthropicChatFormatter
 
 from config import Settings
+from tools_expert import create_expert_toolkits
 
 
 def get_formatter(settings: Settings):
@@ -85,220 +86,263 @@ def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
     )
 
 
-def create_basic_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
+def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
     """
     创建基础版专家Agent（3个）
     快速Demo和开发测试
-    
+
     Args:
         settings: 配置
-        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
+        expert_toolkits: 专家工具集字典
     """
-    # toolkit 参数保留以便未来扩展
+    if expert_toolkits is None:
+        expert_toolkits = {}
+
     model = create_model(settings)
-    
+
     experts = {
         "search_expert": ReActAgent(
             name="搜索专家",
             model=model,
             formatter=get_formatter(settings),
             memory=InMemoryMemory(),
-            # 注意：工具集已经在协调员那里了，专家不需要重复使用
-            # toolkit=toolkit,
+            toolkit=expert_toolkits.get("search_expert"),  # 使用分配的工具
             sys_prompt="""你是旅行搜索专家，负责：
             1. 搜索目的地的基本信息和特色
             2. 查找热门景点、文化活动、美食推荐
             3. 收集当地的实用信息（天气、交通、风俗）
             4. 提供景点的开放时间、门票价格等详细信息
-            
-            根据你的专业知识，提供准确、实用的搜索结果。"""
+
+            你拥有以下工具：
+            - tavily_search: 网络搜索最新信息
+            - 小红书搜索: 获取真实用户评价和攻略
+
+            请优先使用工具获取真实、准确的信息，不要编造数据。"""
         ),
-        
+
         "plan_expert": ReActAgent(
             name="规划专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("plan_expert"),  # 使用分配的工具
             sys_prompt="""你是行程规划专家，负责：
             1. 根据景点位置优化游览路线
             2. 安排每日的行程时间表
             3. 计算路线的交通时间和方式
             4. 确保行程紧凑但不疲劳
-            
+
+            你拥有以下工具：
+            - 高德地图API: 路线规划、距离计算、交通方式查询
+
             设计高效、合理的行程安排。"""
         ),
-        
+
         "budget_expert": ReActAgent(
             name="预算专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("budget_expert"),  # 使用分配的工具
             sys_prompt="""你是预算分析专家，负责：
             1. 计算旅行的总体预算（含住宿、交通、餐饮、门票）
             2. 根据不同预算级别提供方案
             3. 推荐性价比高的选择
             4. 提供省钱技巧和优惠信息
-            
+
+            你拥有以下工具：
+            - tavily_search: 搜索最新价格和优惠信息
+
             提供详细的费用明细。"""
         )
     }
-    
+
     return experts
 
 
-def create_standard_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
+def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
     """
     创建标准版专家Agent（4个）
     适合常规使用场景
-    
+
     Args:
         settings: 配置
-        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
+        expert_toolkits: 专家工具集字典
     """
-    # toolkit 参数保留以便未来扩展
+    if expert_toolkits is None:
+        expert_toolkits = {}
+
     model = create_model(settings)
-    
+
     experts = {
         "poi_expert": ReActAgent(
             name="POI专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("poi_expert"),  # 使用分配的工具
             sys_prompt="""你是景点研究专家，专注于：
             1. 深入研究目的地的必游景点
             2. 根据用户兴趣推荐合适的景点
             3. 提供景点的历史背景和文化价值
             4. 建议最佳游览时间和拍照地点
-            
+
+            你拥有以下工具：
+            - tavily_search: 搜索景点详细信息
+            - 小红书搜索: 获取真实游客体验和攻略
+
             提供专业的景点推荐。"""
         ),
-        
+
         "route_expert": ReActAgent(
             name="路线专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("route_expert"),  # 使用分配的工具
             sys_prompt="""你是路线优化专家，专注于：
             1. 设计最优的景点游览顺序
             2. 选择合适的交通方式
             3. 计算准确的路程时间
             4. 避免路线重复和时间浪费
-            
+
+            你拥有以下工具：
+            - 高德地图API: 路线规划、距离计算、实时交通
+
             优化行程路线。"""
         ),
-        
+
         "local_expert": ReActAgent(
             name="当地专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("local_expert"),  # 使用分配的工具
             sys_prompt="""你是当地文化专家，专注于：
             1. 介绍当地的文化特色和风俗习惯
             2. 推荐地道的美食和餐厅
             3. 提供当地人的生活体验建议
             4. 分享避坑指南和注意事项
-            
+
+            你拥有以下工具：
+            - 小红书搜索: 获取当地真实体验分享
+            - 天气服务: 查询当地天气和气候
+
             提供深度的当地文化体验建议。"""
         ),
-        
+
         "budget_expert": ReActAgent(
             name="预算专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
-            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("budget_expert"),  # 使用分配的工具
             sys_prompt="""你是预算管理专家，专注于：
             1. 制定详细的预算分配方案
             2. 分析各项费用的合理性
             3. 提供不同预算级别的选择
             4. 推荐优惠和省钱策略
-            
+
+            你拥有以下工具：
+            - tavily_search: 搜索最新价格和优惠信息
+
             提供精准的费用分析。"""
         )
     }
-    
+
     return experts
 
 
-def create_full_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
+def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
     """
     创建完整版专家Agent（5-6个）
     适合高端定制需求
-    
+
     Args:
         settings: 配置
-        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
+        expert_toolkits: 专家工具集字典
     """
-    # toolkit 参数保留以便未来扩展
+    if expert_toolkits is None:
+        expert_toolkits = {}
+
     # 先获取标准版的4个专家
-    experts = create_standard_experts(settings, toolkit)
-    
+    experts = create_standard_experts(settings, expert_toolkits)
+
     model = create_model(settings)
-    
+
     # 添加额外的专家
     experts["hotel_expert"] = ReActAgent(
         name="住宿专家",
         model=model,
-        formatter=get_formatter(settings),  # 使用统一的 formatter
-        memory=InMemoryMemory(),  # 显式设置 memory
-        # toolkit=toolkit,  # 专家不需要工具，由协调员使用
+        formatter=get_formatter(settings),
+        memory=InMemoryMemory(),
+        toolkit=expert_toolkits.get("hotel_expert"),  # 使用分配的工具
         sys_prompt="""你是住宿推荐专家，专注于：
         1. 根据预算和需求推荐合适的酒店
         2. 分析酒店的位置、设施和服务
         3. 提供民宿、青旅等多样化选择
         4. 建议最佳的预订时机和渠道
-        
+
+        你拥有以下工具：
+        - tavily_search: 搜索酒店信息和价格
+        - 小红书搜索: 获取住宿真实评价
+
         提供专业的住宿建议。"""
     )
-    
+
     # 可选：添加美食专家
     if settings.debug:  # 在调试模式下添加第6个专家
         experts["food_expert"] = ReActAgent(
             name="美食专家",
             model=model,
             formatter=get_formatter(settings),
-            memory=InMemoryMemory(),  # 显式设置 memory
+            memory=InMemoryMemory(),
+            toolkit=expert_toolkits.get("food_expert"),  # 使用分配的工具
             sys_prompt="""你是美食推荐专家，专注于：
             1. 推荐当地特色美食和餐厅
             2. 根据口味偏好定制美食路线
             3. 提供米其林餐厅和街头小吃
             4. 建议用餐时间和预订方式
-            
+
+            你拥有以下工具：
+            - 小红书搜索: 获取美食体验和评价
+            - tavily_search: 搜索餐厅信息和菜单
+
             提供全方位的美食体验建议。"""
         )
-    
+
     return experts
 
 
-def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
+async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
     """
-    根据配置创建相应的专家Agent组
-    
+    根据配置创建相应的专家Agent组（集成工具分配）
+
     Args:
         settings: 应用配置
-        
+        toolkit: 协调员使用的工具集（保持向后兼容）
+
     Returns:
         Dict[str, ReActAgent]: 专家Agent字典
     """
     mode = settings.agent_mode.lower()
-    
+
+    # 创建专家工具集
+    print(f"🔧 正在为 {mode} 模式分配专家工具...")
+    expert_toolkits = await create_expert_toolkits(mode)
+
     if mode == "basic":
         print("📋 使用基础版配置：3个专家Agent")
-        return create_basic_experts(settings, toolkit)
+        return create_basic_experts(settings, expert_toolkits)
     elif mode == "standard":
         print("📋 使用标准版配置：4个专家Agent")
-        return create_standard_experts(settings, toolkit)
+        return create_standard_experts(settings, expert_toolkits)
     elif mode == "full":
         print("📋 使用完整版配置：5-6个专家Agent")
-        return create_full_experts(settings, toolkit)
+        return create_full_experts(settings, expert_toolkits)
     else:
         print(f"⚠️ 未知的agent_mode: {mode}，使用基础版")
-        return create_basic_experts(settings, toolkit)
+        return create_basic_experts(settings, expert_toolkits)
 
 
 def list_agents(experts: Dict[str, ReActAgent]) -> str:

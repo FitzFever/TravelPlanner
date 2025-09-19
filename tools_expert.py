@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""
+专家级MCP工具分配系统 - 根据专家类型分配特定工具
+"""
+
+import os
+import asyncio
+from typing import Dict, Optional
+from agentscope.tool import Toolkit
+from agentscope.mcp import StdIOStatefulClient, HttpStatefulClient
+
+# 全局 MCP 客户端存储
+mcp_clients = {}
+
+
+async def create_combined_toolkit(tool_types: list, name_suffix: str = "") -> Optional[Toolkit]:
+    """
+    创建组合工具集，支持多种工具类型
+
+    Args:
+        tool_types: 工具类型列表 ["tavily", "xhs", "amap", "weather"]
+        name_suffix: 名称后缀，用于区分不同实例
+    """
+    toolkit = Toolkit()
+    has_tools = False
+
+    for tool_type in tool_types:
+        try:
+            if tool_type == "tavily":
+                client = await _create_tavily_client(f"tavily_{name_suffix}")
+                if client:
+                    await toolkit.register_mcp_client(client)
+                    mcp_clients[f"tavily_{name_suffix}"] = client
+                    has_tools = True
+
+            elif tool_type == "xhs":
+                client = await _create_xhs_client(f"xhs_{name_suffix}")
+                if client:
+                    await toolkit.register_mcp_client(client)
+                    mcp_clients[f"xhs_{name_suffix}"] = client
+                    has_tools = True
+
+            elif tool_type == "amap":
+                client = await _create_amap_client(f"amap_{name_suffix}")
+                if client:
+                    await toolkit.register_mcp_client(client)
+                    mcp_clients[f"amap_{name_suffix}"] = client
+                    has_tools = True
+
+            elif tool_type == "weather":
+                client = await _create_weather_client(f"weather_{name_suffix}")
+                if client:
+                    await toolkit.register_mcp_client(client)
+                    mcp_clients[f"weather_{name_suffix}"] = client
+                    has_tools = True
+
+        except Exception as e:
+            print(f"❌ {tool_type} 工具连接失败 ({name_suffix}): {e}")
+
+    return toolkit if has_tools else None
+
+
+async def _create_tavily_client(name: str):
+    """创建Tavily客户端"""
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    if not tavily_key:
+        try:
+            from config import get_settings
+            settings = get_settings()
+            tavily_key = settings.tavily_api_key
+            if tavily_key and tavily_key != "your-tavily-key-here":
+                os.environ["TAVILY_API_KEY"] = tavily_key
+        except:
+            pass
+
+    if not tavily_key or tavily_key == "your-tavily-key-here":
+        return None
+
+    client = StdIOStatefulClient(
+        name=name,
+        command="npx",
+        args=["-y", "tavily-mcp@latest"],
+        env={"TAVILY_API_KEY": tavily_key}
+    )
+    await client.connect()
+    return client
+
+
+async def _create_xhs_client(name: str):
+    """创建小红书客户端"""
+    client = StdIOStatefulClient(
+        name=name,
+        command="uv",
+        args=["--directory", "/Users/geng/py/xhs-mcp", "run", "main.py"],
+        env={
+            "XHS_COOKIE": "a1=1940627219618wm14yddam6g0hbnswnmmclc7daj430000142908; webId=ee0b066b0d22c21d1822fe73be3d20a6; gid=yj48KJWJKi6Dyj48KJWJySf0jKyYE6y4vff01V46Kk8xDSq8IMEI6W888y4Jj8Y8yiDqqjWi; abRequestId=ee0b066b0d22c21d1822fe73be3d20a6; web_session=0400698e5867e656d08d9dbbbc354bfd4a9550; x-user-id-creator.xiaohongshu.com=5f2c24ae00000000010080db; customerClientId=253070019720926; webBuild=4.81.0; xsecappid=xhs-pc-web; acw_tc=0a00df6717582831520252648e5aef76f4a9fb252e693872f8b54d30ccfcb8; websectiga=3fff3a6f9f07284b62c0f2ebf91a3b10193175c06e4f71492b60e056edcdebb2; sec_poison_id=756416ec-2730-486e-a55e-589e215d65db; loadts=1758283157647; unread={%22ub%22:%2268c508bb000000001c034681%22%2C%22ue%22:%2268c546bf000000001d0097d4%22%2C%22uc%22:25}"
+        }
+    )
+    await client.connect()
+    return client
+
+
+async def _create_amap_client(name: str):
+    """创建高德地图客户端"""
+    client = HttpStatefulClient(
+        name=name,
+        transport="streamable_http",
+        url="https://mcp.amap.com/mcp?key=9105a7f9617c226c0e5f49d059944354"
+    )
+    await client.connect()
+    return client
+
+
+async def _create_weather_client(name: str):
+    """创建天气服务客户端"""
+    client = HttpStatefulClient(
+        name=name,
+        transport="streamable_http",
+        url="https://aigc-mcp-api-test.aijidou.com/mcp/weather/streamable",
+        headers={"apikey": "690fd8653d0ee9c2f552459349e5faef"}
+    )
+    await client.connect()
+    return client
+
+
+async def create_expert_toolkits(agent_mode: str = "standard") -> Dict[str, Optional[Toolkit]]:
+    """
+    根据Agent模式创建对应的工具集分配
+
+    Args:
+        agent_mode: Agent模式 ("basic", "standard", "full")
+
+    Returns:
+        Dict[str, Optional[Toolkit]]: 专家名称到工具集的映射
+    """
+    print(f"🔧 正在为 {agent_mode} 模式分配工具...")
+
+    # 工具分配策略
+    allocation_strategy = {
+        "basic": {
+            "search_expert": ["tavily", "xhs"],    # 搜索专家：搜索+社交
+            "plan_expert": ["amap"],               # 规划专家：地图
+            "budget_expert": ["tavily"]            # 预算专家：搜索
+        },
+        "standard": {
+            "poi_expert": ["tavily", "xhs"],       # POI专家：搜索+社交
+            "route_expert": ["amap"],              # 路线专家：地图
+            "local_expert": ["xhs", "weather"],    # 当地专家：社交+天气
+            "budget_expert": ["tavily"]            # 预算专家：搜索
+        },
+        "full": {
+            "poi_expert": ["tavily"],              # POI专家：搜索
+            "route_expert": ["amap"],              # 路线专家：地图
+            "local_expert": ["xhs"],               # 当地专家：社交
+            "budget_expert": ["tavily"],           # 预算专家：搜索
+            "hotel_expert": ["xhs"],               # 住宿专家：社交
+            "food_expert": ["weather"]             # 美食专家：天气
+        }
+    }
+
+    strategy = allocation_strategy.get(agent_mode, allocation_strategy["basic"])
+    toolkits = {}
+
+    # 并行创建所有工具集
+    tasks = []
+    expert_names = []
+
+    for expert_name, tool_types in strategy.items():
+        task = create_combined_toolkit(tool_types, expert_name)
+        tasks.append(task)
+        expert_names.append(expert_name)
+
+    # 等待所有工具集创建完成
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 分配结果
+    for i, result in enumerate(results):
+        expert_name = expert_names[i]
+        if isinstance(result, Exception):
+            print(f"❌ {expert_name} 工具集创建失败: {result}")
+            toolkits[expert_name] = None
+        else:
+            toolkits[expert_name] = result
+
+    # 显示分配结果
+    print(f"🎯 工具分配完成:")
+    for expert, toolkit in toolkits.items():
+        if toolkit:
+            print(f"   ✅ {expert}: 已分配工具")
+        else:
+            print(f"   ⚠️  {expert}: 无可用工具")
+
+    return toolkits
+
+
+async def cleanup_expert_mcp():
+    """清理所有专家MCP连接"""
+    print("🔄 正在清理MCP连接...")
+
+    for name, client in mcp_clients.items():
+        try:
+            await client.close()
+            print(f"✅ {name} MCP 连接已关闭")
+        except Exception as e:
+            print(f"⚠️ 关闭 {name} MCP 连接时出错: {e}")
+
+    mcp_clients.clear()
+    print("🎯 所有MCP连接已清理")
+
+
+# 便捷函数：获取单个工具集
+async def get_search_toolkit() -> Optional[Toolkit]:
+    """获取搜索工具集 (Tavily + 小红书)"""
+    return await create_combined_toolkit(["tavily", "xhs"], "combined_search")
+
+
+async def get_location_toolkit() -> Optional[Toolkit]:
+    """获取位置工具集 (高德地图)"""
+    return await create_combined_toolkit(["amap"], "location")
+
+
+async def get_social_toolkit() -> Optional[Toolkit]:
+    """获取社交媒体工具集 (小红书)"""
+    return await create_combined_toolkit(["xhs"], "social")
+
+
+async def get_weather_toolkit() -> Optional[Toolkit]:
+    """获取天气工具集"""
+    return await create_combined_toolkit(["weather"], "weather_only")
+
+
+if __name__ == "__main__":
+    # 测试工具分配
+    async def test_toolkits():
+        print("🧪 测试工具分配系统...")
+
+        for mode in ["basic", "standard", "full"]:
+            print(f"\n📋 测试 {mode} 模式:")
+            toolkits = await create_expert_toolkits(mode)
+
+            print(f"   分配的专家数量: {len(toolkits)}")
+            for expert, toolkit in toolkits.items():
+                status = "✅ 有工具" if toolkit else "❌ 无工具"
+                print(f"   {expert}: {status}")
+
+        # 清理
+        await cleanup_expert_mcp()
+
+    asyncio.run(test_toolkits())

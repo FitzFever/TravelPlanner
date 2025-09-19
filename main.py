@@ -14,6 +14,7 @@ from agentscope.pipeline import MsgHub
 from config import get_settings
 from agent_factory import create_coordinator, create_expert_agents, list_agents
 from tools_simple import create_travel_toolkit, cleanup_mcp
+from tools_expert import cleanup_expert_mcp
 
 async def main():
     """主函数 - Multi-Agent旅行规划系统"""
@@ -47,7 +48,7 @@ async def main():
     
     # 根据配置创建Agent团队（传入工具集）
     coordinator = create_coordinator(settings, toolkit)
-    experts = create_expert_agents(settings, toolkit)
+    experts = await create_expert_agents(settings, toolkit)
     
     # 创建用户代理
     user = UserAgent("旅行者")
@@ -200,3 +201,4 @@ if __name__ == "__main__":
     finally:
         # 清理 MCP 连接
         asyncio.run(cleanup_mcp())
+        asyncio.run(cleanup_expert_mcp())
