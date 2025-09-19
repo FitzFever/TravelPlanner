@@ -6,7 +6,29 @@
 
 ## 🔍 关键问题与解决方案
 
-### 1. Studio用户输入问题
+### 1. Claude Tool Calling错误
+
+#### 问题描述
+使用Claude时出现 "tool_use ids were found without tool_result blocks immediately after" 错误。
+
+#### 问题根源
+- 自定义formatter没有正确处理Claude的tool_use/tool_result格式
+- Claude API要求每个tool_use后必须紧跟对应的tool_result消息
+
+#### 解决方案
+使用AgentScope原生的AnthropicChatFormatter：
+```python
+from agentscope.formatter import AnthropicChatFormatter
+
+def get_formatter(settings: Settings):
+    if settings.model_type == "claude":
+        # 必须使用原生formatter，它正确处理tool调用格式
+        return AnthropicChatFormatter()
+    else:
+        return KimiMultiAgentFormatter()
+```
+
+### 2. Studio用户输入问题
 
 #### 问题描述
 在AgentScope Studio中显示"No user input is requested"，用户无法输入。
@@ -308,8 +330,9 @@ project/
 
 1. **依赖安装**: AgentScope作为pip包安装 (`agentscope>=0.1.0`)
 2. **路径清理**: 移除所有 `sys.path.append` 语句
-3. **本地Formatter**: `KimiMultiAgentFormatter` 在 `formatter/` 模块中实现
+3. **本地Formatter**: 支持 `KimiMultiAgentFormatter` 和 `ClaudeFormatter`
 4. **简化配置**: 移除非必需的 `InMemoryMemory` 参数
+5. **多模型支持**: 支持 Claude (Anthropic) 和 Kimi/Moonshot 模型切换
 
 ### ⚠️ 已知限制
 
@@ -334,11 +357,16 @@ pip install -r requirements.txt
 cp .env.template .env
 # 编辑 .env 文件添加API密钥
 
-# 3. 运行程序
+# 3. 选择模型（config.py）
+model_type: str = "claude"  # 或 "openai" 使用 Kimi
+
+# 4. 运行程序
 python main.py
 ```
 
-详见 `SETUP.md` 获取完整安装指南。
+详见:
+- `SETUP.md` - 完整安装指南
+- `CLAUDE_SETUP.md` - Claude 模型配置指南
 
 ---
 

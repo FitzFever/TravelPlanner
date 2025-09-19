@@ -82,10 +82,15 @@ TravelPlanner/
 
 1. **移除源码路径依赖**: 不再需要 `sys.path.append('../../src')`
 2. **AgentScope作为包安装**: 通过 pip 从 PyPI 安装
-3. **本地Formatter实现**: `KimiMultiAgentFormatter` 在本地 `formatter` 模块中实现
+3. **本地Formatter实现**: 
+   - `KimiMultiAgentFormatter` - 用于 Kimi/Moonshot API
+   - `ClaudeFormatter` - 用于 Claude API
    - 实现了异步 `format` 方法兼容 AgentScope 接口
-   - 支持 Msg 对象和字典格式的消息
 4. **简化内存管理**: 移除了 `InMemoryMemory` 参数（非必需）
+5. **多模型支持**: 
+   - 支持 Claude (Anthropic) 模型
+   - 支持自定义 base_url 配置（用于代理或自定义端点）
+   - 可在 Claude 和 Kimi 之间灵活切换
 
 ## 注意事项
 

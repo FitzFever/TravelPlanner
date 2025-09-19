@@ -13,12 +13,22 @@ from agentscope.pipeline import MsgHub
 
 from config import get_settings
 from agent_factory import create_coordinator, create_expert_agents, list_agents
+from tools_simple import create_travel_toolkit, cleanup_mcp
 
 async def main():
     """主函数 - Multi-Agent旅行规划系统"""
     
     print("🎨 启动Multi-Agent旅行规划系统...")
     print("📚 基于AgentScope官方最佳实践设计")
+    
+    # 初始化 MCP 工具集（如果配置了 Tavily）
+    toolkit = None
+    try:
+        toolkit = await create_travel_toolkit()
+        if toolkit:
+            print("✅ Tavily MCP 工具已加载")
+    except Exception as e:
+        print(f"⚠️ MCP 工具加载失败: {e}")
     
     # 初始化设置
     settings = get_settings()
@@ -35,9 +45,9 @@ async def main():
     print(f"📊 Studio地址: {settings.studio_url}")
     print(f"🎯 Agent模式: {settings.agent_mode.upper()}")
     
-    # 根据配置创建Agent团队
-    coordinator = create_coordinator(settings)
-    experts = create_expert_agents(settings)
+    # 根据配置创建Agent团队（传入工具集）
+    coordinator = create_coordinator(settings, toolkit)
+    experts = create_expert_agents(settings, toolkit)
     
     # 创建用户代理
     user = UserAgent("旅行者")
@@ -91,11 +101,11 @@ async def main():
                 # 1. 协调员分析用户需求
                 analysis = await coordinator(
                     Msg(
-                        "system",
-                        f"用户的旅行需求是：{msg.content}\n"
+                        name="system",
+                        content=f"用户的旅行需求是：{msg.content}\n"
                         f"请分析需求的关键信息（目的地、天数、预算、偏好等），"
                         f"然后分配任务给{len(experts)}位专家。",
-                        "system"
+                        role="system"
                     )
                 )
                 
@@ -114,16 +124,37 @@ async def main():
 请使用工具获取准确信息，给出专业建议。"""
                     
                     # 创建任务但不等待
-                    task = expert(Msg("coordinator", expert_prompt, "assistant"))
+                    task = expert(Msg(
+                        name="coordinator", 
+                        content=expert_prompt, 
+                        role="assistant"
+                    ))
                     expert_tasks.append(task)
                 
-                # 等待所有专家完成
-                expert_results = await asyncio.gather(*expert_tasks)
+                # 等待所有专家完成（即使有错误也继续）
+                expert_results = await asyncio.gather(*expert_tasks, return_exceptions=True)
                 
                 # 3. 协调员整合方案
+                expert_advice_parts = []
+                for i, result in enumerate(expert_results):
+                    if isinstance(result, Exception):
+                        # 如果是异常，记录但继续
+                        print(f"⚠️ 专家{i+1}（{expert_list[i].name}）出错: {str(result)[:100]}")
+                        continue
+                    elif result is not None:
+                        content = result.content if hasattr(result, 'content') else str(result)
+                        expert_advice_parts.append(
+                            f"专家{i+1}（{expert_list[i].name}）建议：\n{content}"
+                        )
+                
+                expert_advice = "\n\n".join(expert_advice_parts) if expert_advice_parts else "专家暂无建议"
+                
                 integration_prompt = f"""请基于{len(experts)}位专家的建议，生成完整的旅行方案。
 
 用户需求：{msg.content}
+
+专家建议：
+{expert_advice}
 
 请整合成一份结构化的旅行规划，包括：
 1. 行程安排（每日计划）
@@ -138,7 +169,11 @@ async def main():
 - 信息准确实用"""
                 
                 final_plan = await coordinator(
-                    Msg("system", integration_prompt, "system")
+                    Msg(
+                        name="system",
+                        content=integration_prompt,
+                        role="system"
+                    )
                 )
             
             # 返回给用户
@@ -160,4 +195,8 @@ async def main():
             )
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    finally:
+        # 清理 MCP 连接
+        asyncio.run(cleanup_mcp())

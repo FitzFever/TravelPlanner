@@ -6,138 +6,197 @@ Agent工厂模块 - 根据配置创建不同数量和类型的Agent
 
 from typing import Dict, List
 from agentscope.agent import ReActAgent
-from agentscope.model import OpenAIChatModel
+from agentscope.model import OpenAIChatModel, AnthropicChatModel
+from agentscope.memory import InMemoryMemory
 
-# 使用本地的 KimiMultiAgentFormatter
-from formatter import KimiMultiAgentFormatter
+# 使用本地的 Formatter
+from formatter import KimiMultiAgentFormatter, SafeAnthropicChatFormatter
 
 from config import Settings
-from tools import create_travel_toolkit, create_minimal_toolkit
+
+
+def get_formatter(settings: Settings):
+    """根据模型类型返回合适的 formatter"""
+    if settings.model_type == "claude":
+        # 使用安全的 AnthropicChatFormatter，能处理 content 为 None 的情况
+        return SafeAnthropicChatFormatter()
+    else:
+        # 使用本地的 KimiMultiAgentFormatter
+        return KimiMultiAgentFormatter()
 
 
 def create_model(settings: Settings):
-    """创建统一的模型实例"""
-    return OpenAIChatModel(
-        model_name="kimi-k2-turbo-preview",
-        api_key=settings.api_key,
-        client_args={"base_url": settings.base_url}
-    )
+    """创建统一的模型实例，支持 Claude 和 OpenAI 格式"""
+    
+    if settings.model_type == "claude":
+        # 使用 AgentScope 原生的 AnthropicChatModel
+        return AnthropicChatModel(
+            model_name=settings.claude_model,
+            api_key=settings.anthropic_api_key,
+            # Claude 模型的额外配置
+            max_tokens=40960,
+            stream=settings.stream_output,  # 可配置的流式输出
+            # 支持自定义 base_url（用于代理或自定义端点）
+            client_args={
+                "base_url": settings.anthropic_base_url
+            }
+        )
+    else:
+        # 原有的 OpenAI 格式 API（Moonshot 等）
+        return OpenAIChatModel(
+            model_name="kimi-k2-turbo-preview",
+            api_key=settings.api_key,
+            stream=settings.stream_output,  # 可配置的流式输出
+            client_args={"base_url": settings.base_url}
+        )
 
 
-def create_coordinator(settings: Settings) -> ReActAgent:
+def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
     """
     创建协调Agent（所有模式通用）
+    
+    Args:
+        settings: 配置
+        toolkit: 可选的工具集（如 Tavily MCP）
     """
     return ReActAgent(
         name="旅行规划师",
         model=create_model(settings),
-        formatter=KimiMultiAgentFormatter(),
-        sys_prompt="""你是主协调规划师，负责：
-        1. 理解用户的旅行需求（目的地、时间、预算、偏好）
-        2. 协调专家团队的工作，分配任务
-        3. 整合各专家的建议，生成完整的旅行方案
-        4. 确保方案满足用户的需求和预期
-        5. 与用户友好交流，提供专业建议
+        formatter=get_formatter(settings),
+        memory=InMemoryMemory(),  # 显式设置 memory
+        toolkit=toolkit,  # 协调员使用工具集进行搜索
+        sys_prompt="""你是主协调规划师，负责为用户提供基于真实数据的旅行规划服务。
+
+工作流程：
+1. 理解用户的旅行需求（目的地、时间、预算、偏好）
+2. 【重要】使用 tavily_search 工具搜索相关信息：
+   - 搜索目的地的景点、门票价格、开放时间
+   - 搜索当地的美食、住宿、交通信息
+   - 搜索最新的旅游攻略和实用信息
+3. 基于搜索到的真实信息，协调专家团队分析
+4. 整合各方建议，生成完整的旅行方案
+
+注意事项：
+- 必须使用 tavily_search 工具获取真实信息
+- 不要编造或猜测信息
+- 所有建议都应基于搜索到的真实数据
         
-        请用中文与用户交流，提供详细、实用、个性化的旅行规划服务。"""
+请用中文与用户交流，提供准确、实用的旅行规划服务。"""
     )
 
 
-def create_basic_experts(settings: Settings) -> Dict[str, ReActAgent]:
+def create_basic_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
     """
     创建基础版专家Agent（3个）
     快速Demo和开发测试
+    
+    Args:
+        settings: 配置
+        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
     """
+    # toolkit 参数保留以便未来扩展
     model = create_model(settings)
     
     experts = {
         "search_expert": ReActAgent(
             name="搜索专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),
+            # 注意：工具集已经在协调员那里了，专家不需要重复使用
+            # toolkit=toolkit,
             sys_prompt="""你是旅行搜索专家，负责：
             1. 搜索目的地的基本信息和特色
             2. 查找热门景点、文化活动、美食推荐
             3. 收集当地的实用信息（天气、交通、风俗）
             4. 提供景点的开放时间、门票价格等详细信息
             
-            使用工具搜索信息，提供准确、实用的搜索结果。"""
+            根据你的专业知识，提供准确、实用的搜索结果。"""
         ),
         
         "plan_expert": ReActAgent(
             name="规划专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,
             sys_prompt="""你是行程规划专家，负责：
             1. 根据景点位置优化游览路线
             2. 安排每日的行程时间表
             3. 计算路线的交通时间和方式
             4. 确保行程紧凑但不疲劳
             
-            使用路线计算工具，设计高效、合理的行程安排。"""
+            设计高效、合理的行程安排。"""
         ),
         
         "budget_expert": ReActAgent(
             name="预算专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,
             sys_prompt="""你是预算分析专家，负责：
             1. 计算旅行的总体预算（含住宿、交通、餐饮、门票）
             2. 根据不同预算级别提供方案
             3. 推荐性价比高的选择
             4. 提供省钱技巧和优惠信息
             
-            使用预算估算工具，提供详细的费用明细。"""
+            提供详细的费用明细。"""
         )
     }
     
     return experts
 
 
-def create_standard_experts(settings: Settings) -> Dict[str, ReActAgent]:
+def create_standard_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
     """
     创建标准版专家Agent（4个）
     适合常规使用场景
+    
+    Args:
+        settings: 配置
+        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
     """
+    # toolkit 参数保留以便未来扩展
     model = create_model(settings)
     
     experts = {
         "poi_expert": ReActAgent(
             name="POI专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
             sys_prompt="""你是景点研究专家，专注于：
             1. 深入研究目的地的必游景点
             2. 根据用户兴趣推荐合适的景点
             3. 提供景点的历史背景和文化价值
             4. 建议最佳游览时间和拍照地点
             
-            使用搜索工具获取景点信息，提供专业的景点推荐。"""
+            提供专业的景点推荐。"""
         ),
         
         "route_expert": ReActAgent(
             name="路线专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
             sys_prompt="""你是路线优化专家，专注于：
             1. 设计最优的景点游览顺序
             2. 选择合适的交通方式
             3. 计算准确的路程时间
             4. 避免路线重复和时间浪费
             
-            使用路线计算工具，优化行程路线。"""
+            优化行程路线。"""
         ),
         
         "local_expert": ReActAgent(
             name="当地专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
             sys_prompt="""你是当地文化专家，专注于：
             1. 介绍当地的文化特色和风俗习惯
             2. 推荐地道的美食和餐厅
@@ -150,28 +209,34 @@ def create_standard_experts(settings: Settings) -> Dict[str, ReActAgent]:
         "budget_expert": ReActAgent(
             name="预算专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
-            toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
+            # toolkit=toolkit,  # 专家不需要工具，由协调员使用
             sys_prompt="""你是预算管理专家，专注于：
             1. 制定详细的预算分配方案
             2. 分析各项费用的合理性
             3. 提供不同预算级别的选择
             4. 推荐优惠和省钱策略
             
-            使用预算工具，提供精准的费用分析。"""
+            提供精准的费用分析。"""
         )
     }
     
     return experts
 
 
-def create_full_experts(settings: Settings) -> Dict[str, ReActAgent]:
+def create_full_experts(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
     """
     创建完整版专家Agent（5-6个）
     适合高端定制需求
+    
+    Args:
+        settings: 配置
+        toolkit: 可选的工具集（目前专家不使用工具，由协调员统一调用）
     """
+    # toolkit 参数保留以便未来扩展
     # 先获取标准版的4个专家
-    experts = create_standard_experts(settings)
+    experts = create_standard_experts(settings, toolkit)
     
     model = create_model(settings)
     
@@ -179,15 +244,16 @@ def create_full_experts(settings: Settings) -> Dict[str, ReActAgent]:
     experts["hotel_expert"] = ReActAgent(
         name="住宿专家",
         model=model,
-        formatter=KimiMultiAgentFormatter(),
-        toolkit=create_travel_toolkit(),  # 每个Agent独立的toolkit
+        formatter=get_formatter(settings),  # 使用统一的 formatter
+        memory=InMemoryMemory(),  # 显式设置 memory
+        # toolkit=toolkit,  # 专家不需要工具，由协调员使用
         sys_prompt="""你是住宿推荐专家，专注于：
         1. 根据预算和需求推荐合适的酒店
         2. 分析酒店的位置、设施和服务
         3. 提供民宿、青旅等多样化选择
         4. 建议最佳的预订时机和渠道
         
-        使用酒店搜索工具，提供专业的住宿建议。"""
+        提供专业的住宿建议。"""
     )
     
     # 可选：添加美食专家
@@ -195,7 +261,8 @@ def create_full_experts(settings: Settings) -> Dict[str, ReActAgent]:
         experts["food_expert"] = ReActAgent(
             name="美食专家",
             model=model,
-            formatter=KimiMultiAgentFormatter(),
+            formatter=get_formatter(settings),
+            memory=InMemoryMemory(),  # 显式设置 memory
             sys_prompt="""你是美食推荐专家，专注于：
             1. 推荐当地特色美食和餐厅
             2. 根据口味偏好定制美食路线
@@ -208,7 +275,7 @@ def create_full_experts(settings: Settings) -> Dict[str, ReActAgent]:
     return experts
 
 
-def create_expert_agents(settings: Settings) -> Dict[str, ReActAgent]:
+def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
     """
     根据配置创建相应的专家Agent组
     
@@ -222,16 +289,16 @@ def create_expert_agents(settings: Settings) -> Dict[str, ReActAgent]:
     
     if mode == "basic":
         print("📋 使用基础版配置：3个专家Agent")
-        return create_basic_experts(settings)
+        return create_basic_experts(settings, toolkit)
     elif mode == "standard":
         print("📋 使用标准版配置：4个专家Agent")
-        return create_standard_experts(settings)
+        return create_standard_experts(settings, toolkit)
     elif mode == "full":
         print("📋 使用完整版配置：5-6个专家Agent")
-        return create_full_experts(settings)
+        return create_full_experts(settings, toolkit)
     else:
         print(f"⚠️ 未知的agent_mode: {mode}，使用基础版")
-        return create_basic_experts(settings)
+        return create_basic_experts(settings, toolkit)
 
 
 def list_agents(experts: Dict[str, ReActAgent]) -> str:

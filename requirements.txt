@@ -10,6 +10,9 @@ websockets>=13.0.0
 pydantic>=2.11.0,<3.0.0
 pydantic-settings>=2.5.2
 
+# 环境变量管理
+python-dotenv>=1.0.0
+
 # MCP - AgentScope兼容版本
 mcp>=1.13.0
 
