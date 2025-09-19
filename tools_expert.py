@@ -88,10 +88,19 @@ async def _create_tavily_client(name: str):
 
 async def _create_xhs_client(name: str):
     """创建小红书客户端"""
+    # 从配置获取小红书MCP路径
+    try:
+        from config import get_settings
+        settings = get_settings()
+        xhs_directory = settings.xhs_mcp_directory
+    except:
+        # 回退到默认路径
+        xhs_directory = "/Users/geng/py/xhs-mcp"
+
     client = StdIOStatefulClient(
         name=name,
         command="uv",
-        args=["--directory", "/Users/geng/py/xhs-mcp", "run", "main.py"],
+        args=["--directory", xhs_directory, "run", "main.py"],
         env={
             "XHS_COOKIE": "a1=1940627219618wm14yddam6g0hbnswnmmclc7daj430000142908; webId=ee0b066b0d22c21d1822fe73be3d20a6; gid=yj48KJWJKi6Dyj48KJWJySf0jKyYE6y4vff01V46Kk8xDSq8IMEI6W888y4Jj8Y8yiDqqjWi; abRequestId=ee0b066b0d22c21d1822fe73be3d20a6; web_session=0400698e5867e656d08d9dbbbc354bfd4a9550; x-user-id-creator.xiaohongshu.com=5f2c24ae00000000010080db; customerClientId=253070019720926; webBuild=4.81.0; xsecappid=xhs-pc-web; acw_tc=0a00df6717582831520252648e5aef76f4a9fb252e693872f8b54d30ccfcb8; websectiga=3fff3a6f9f07284b62c0f2ebf91a3b10193175c06e4f71492b60e056edcdebb2; sec_poison_id=756416ec-2730-486e-a55e-589e215d65db; loadts=1758283157647; unread={%22ub%22:%2268c508bb000000001c034681%22%2C%22ue%22:%2268c546bf000000001d0097d4%22%2C%22uc%22:25}"
         }
@@ -123,49 +132,31 @@ async def _create_weather_client(name: str):
     return client
 
 
-async def create_expert_toolkits(agent_mode: str = "standard") -> Dict[str, Optional[Toolkit]]:
+async def create_expert_toolkits() -> Dict[str, Optional[Toolkit]]:
     """
-    根据Agent模式创建对应的工具集分配
-
-    Args:
-        agent_mode: Agent模式 ("basic", "standard", "full")
+    创建标准5个专家的工具集分配（基于文档定义）
 
     Returns:
         Dict[str, Optional[Toolkit]]: 专家名称到工具集的映射
     """
-    print(f"🔧 正在为 {agent_mode} 模式分配工具...")
+    print("🔧 正在为5个标准专家分配工具...")
 
-    # 工具分配策略
+    # 标准5个专家的工具分配（基于doc/agent/experts.md）
     allocation_strategy = {
-        "basic": {
-            "search_expert": ["tavily", "xhs"],    # 搜索专家：搜索+社交
-            "plan_expert": ["amap"],               # 规划专家：地图
-            "budget_expert": ["tavily"]            # 预算专家：搜索
-        },
-        "standard": {
-            "poi_expert": ["tavily", "xhs"],       # POI专家：搜索+社交
-            "route_expert": ["amap"],              # 路线专家：地图
-            "local_expert": ["xhs", "weather"],    # 当地专家：社交+天气
-            "budget_expert": ["tavily"]            # 预算专家：搜索
-        },
-        "full": {
-            "poi_expert": ["tavily"],              # POI专家：搜索
-            "route_expert": ["amap"],              # 路线专家：地图
-            "local_expert": ["xhs"],               # 当地专家：社交
-            "budget_expert": ["tavily"],           # 预算专家：搜索
-            "hotel_expert": ["xhs"],               # 住宿专家：社交
-            "food_expert": ["weather"]             # 美食专家：天气
-        }
+        "poi_expert": ["tavily", "xhs"],        # 景点研究专家：搜索+社交
+        "route_expert": ["amap"],               # 路线优化专家：地图
+        "local_expert": ["weather", "xhs"],     # 当地专家：天气+社交
+        "hotel_expert": ["tavily", "xhs"],      # 住宿专家：搜索+社交
+        "budget_expert": ["tavily"]             # 预算分析专家：搜索
     }
 
-    strategy = allocation_strategy.get(agent_mode, allocation_strategy["basic"])
     toolkits = {}
 
     # 并行创建所有工具集
     tasks = []
     expert_names = []
 
-    for expert_name, tool_types in strategy.items():
+    for expert_name, tool_types in allocation_strategy.items():
         task = create_combined_toolkit(tool_types, expert_name)
         tasks.append(task)
         expert_names.append(expert_name)
@@ -232,16 +223,14 @@ async def get_weather_toolkit() -> Optional[Toolkit]:
 if __name__ == "__main__":
     # 测试工具分配
     async def test_toolkits():
-        print("🧪 测试工具分配系统...")
+        print("🧪 测试标准5专家工具分配系统...")
 
-        for mode in ["basic", "standard", "full"]:
-            print(f"\n📋 测试 {mode} 模式:")
-            toolkits = await create_expert_toolkits(mode)
+        toolkits = await create_expert_toolkits()
 
-            print(f"   分配的专家数量: {len(toolkits)}")
-            for expert, toolkit in toolkits.items():
-                status = "✅ 有工具" if toolkit else "❌ 无工具"
-                print(f"   {expert}: {status}")
+        print(f"   分配的专家数量: {len(toolkits)}")
+        for expert, toolkit in toolkits.items():
+            status = "✅ 有工具" if toolkit else "❌ 无工具"
+            print(f"   {expert}: {status}")
 
         # 清理
         await cleanup_expert_mcp()

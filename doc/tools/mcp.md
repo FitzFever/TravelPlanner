@@ -25,12 +25,13 @@
 
 ## 小红书
 - https://github.com/jobsonlook/xhs-mcp
+- 路径配置：在 config.py 中的 xhs_mcp_directory 设置
 ```json
 {
   "command": "uv",
   "args": [
     "--directory",
-    "/Users/geng/py/xhs-mcp",
+    "{从config.py读取xhs_mcp_directory}",
     "run",
     "main.py"
   ],

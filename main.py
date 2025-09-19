@@ -44,7 +44,6 @@ async def main():
     
     print("✅ AgentScope初始化完成")
     print(f"📊 Studio地址: {settings.studio_url}")
-    print(f"🎯 Agent模式: {settings.agent_mode.upper()}")
     
     # 根据配置创建Agent团队（传入工具集）
     coordinator = create_coordinator(settings, toolkit)
@@ -61,12 +60,12 @@ async def main():
     # 初始欢迎消息
     welcome_msg = f"""您好！我是您的AI旅行规划师。
 
-我的专业团队包括{len(experts)}位专家，可以为您提供：
-- 🏛️ 景点推荐和深度介绍
+我的专业团队包括5位专家，可以为您提供：
+- 🏛️ 景点研究和深度推荐
 - 🗺️ 路线优化和交通规划
+- 🏨 住宿推荐和性价比分析
+- 🌤️ 当地文化和实用信息
 - 💰 预算分析和省钱建议
-{'- 🏨 住宿推荐' if len(experts) >= 5 else ''}
-{'- 🍜 美食探索' if len(experts) >= 6 else ''}
 
 请告诉我您的旅行需求，比如：
 - 目的地（如：上海、北京、东京）
@@ -105,7 +104,7 @@ async def main():
                         name="system",
                         content=f"用户的旅行需求是：{msg.content}\n"
                         f"请分析需求的关键信息（目的地、天数、预算、偏好等），"
-                        f"然后分配任务给{len(experts)}位专家。",
+                        f"然后分配任务给5位专家。",
                         role="system"
                     )
                 )
@@ -114,13 +113,13 @@ async def main():
                 expert_tasks = []
                 for expert in expert_list:
                     expert_prompt = f"""基于用户需求：{msg.content}
-                    
+
 请根据你的专业领域提供建议：
-- 如果你是搜索/POI专家：搜索并推荐景点
-- 如果你是规划/路线专家：优化游览路线
-- 如果你是预算专家：分析费用明细
+- 如果你是景点研究专家：深入研究并推荐景点
+- 如果你是路线优化专家：设计最优游览路线
 - 如果你是当地专家：提供文化和美食建议
-- 如果你是住宿专家：推荐合适的酒店
+- 如果你是住宿专家：推荐合适的住宿选择
+- 如果你是预算分析专家：制定详细的费用分析
 
 请使用工具获取准确信息，给出专业建议。"""
                     
@@ -150,7 +149,7 @@ async def main():
                 
                 expert_advice = "\n\n".join(expert_advice_parts) if expert_advice_parts else "专家暂无建议"
                 
-                integration_prompt = f"""请基于{len(experts)}位专家的建议，生成完整的旅行方案。
+                integration_prompt = f"""请基于5位专家的建议，生成完整的旅行方案。
 
 用户需求：{msg.content}
 

@@ -23,14 +23,14 @@ class Settings(BaseSettings):
     
     # 搜索配置 - 实际值从.env文件读取
     tavily_api_key: str = "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"
+
+    # MCP工具路径配置
+    xhs_mcp_directory: str = "/Users/geng/py/xhs-mcp"  # 小红书MCP项目路径
     
     # AgentScope Studio配置 - 实际值从.env文件读取
     studio_url: str = "http://localhost:3000"
     enable_studio: bool = True
-    
-    # Agent配置 - 控制专家Agent数量
-    agent_mode: str = "basic"  # basic, standard, full
-    
+
     # 应用配置
     debug: bool = True
     stream_output: bool = True  # 是否启用流式输出
