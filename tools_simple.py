@@ -59,5 +59,9 @@ async def cleanup_mcp():
     """清理 MCP 连接"""
     global tavily_client
     if tavily_client:
-        await tavily_client.close()
-        tavily_client = None
+        try:
+            await tavily_client.close()
+        except Exception as e:
+            print(f"⚠️ MCP 客户端关闭警告: {e}")
+        finally:
+            tavily_client = None

@@ -346,6 +346,13 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     finally:
-        # 清理 MCP 连接
-        asyncio.run(cleanup_mcp())
-        asyncio.run(cleanup_expert_mcp())
+        # 清理 MCP 连接，使用防御性错误处理
+        try:
+            asyncio.run(cleanup_mcp())
+        except Exception as e:
+            print(f"⚠️ MCP 清理警告: {e}")
+        
+        try:
+            asyncio.run(cleanup_expert_mcp())
+        except Exception as e:
+            print(f"⚠️ 专家 MCP 清理警告: {e}")

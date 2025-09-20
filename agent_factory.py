@@ -8,18 +8,21 @@ from typing import Dict, List
 from agentscope.agent import ReActAgent
 from agentscope.model import OpenAIChatModel, AnthropicChatModel
 from agentscope.memory import InMemoryMemory
+from agentscope.tool import Toolkit
 
 # 使用本地的 Formatter
-from formatter import KimiMultiAgentFormatter, SafeAnthropicChatFormatter
+from formatter import KimiMultiAgentFormatter
 
 from config import Settings
 from tools_expert import create_expert_toolkits
+from tools_storage import save_travel_plan, load_travel_plan, list_travel_plans, save_structured_travel_plan, request_structured_output
 
 
 def get_formatter(settings: Settings):
     """根据模型类型返回合适的 formatter"""
     if settings.model_type == "claude":
-        # 使用安全的 AnthropicChatFormatter，能处理 content 为 None 的情况
+        # 使用修复的 SafeAnthropicChatFormatter，解决空内容问题
+        from formatter.safe_anthropic_formatter import SafeAnthropicChatFormatter
         return SafeAnthropicChatFormatter()
     else:
         # 使用本地的 KimiMultiAgentFormatter
@@ -60,12 +63,23 @@ def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
         settings: 配置
         toolkit: 可选的工具集（如 Tavily MCP）
     """
+    # 创建或扩展工具集，添加存储工具
+    if toolkit is None:
+        toolkit = Toolkit()
+    
+    # 注册简化的路书存储工具
+    toolkit.register_tool_function(save_travel_plan)
+    toolkit.register_tool_function(save_structured_travel_plan)
+    toolkit.register_tool_function(load_travel_plan)
+    toolkit.register_tool_function(list_travel_plans)
+    toolkit.register_tool_function(request_structured_output)
+    
     return ReActAgent(
         name="旅行规划师",
         model=create_model(settings),
         formatter=get_formatter(settings),
         memory=InMemoryMemory(),  # 显式设置 memory
-        toolkit=toolkit,  # 协调员使用工具集进行搜索
+        toolkit=toolkit,  # 协调员使用工具集进行搜索和存储
         sys_prompt="""你是主协调规划师，负责为用户提供基于真实数据的旅行规划服务。
 
 工作流程：
@@ -76,11 +90,38 @@ def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
    - 搜索最新的旅游攻略和实用信息
 3. 基于搜索到的真实信息，协调专家团队分析
 4. 整合各方建议，生成完整的旅行方案
+5. 【重要】路书生成后自动保存，或根据用户要求保存
+
+可用的存储工具：
+- save_travel_plan: 保存文本格式路书
+- save_structured_travel_plan: 保存结构化数据（推荐，直接传入模型生成的结构化数据）
+- request_structured_output: 请求用户提供结构化格式的旅行方案
+- load_travel_plan: 加载保存的路书
+- list_travel_plans: 查看所有路书
+
+路书保存规则：
+- 【推荐】生成完整方案后，优先使用 save_structured_travel_plan 保存结构化数据
+- 传统文本格式需要时，使用 save_travel_plan 保存
+- 用户要求"保存"、"存储"路书时，询问用户偏好或直接使用结构化保存
+- 用户询问"历史记录"、"之前的计划"时，使用 list_travel_plans
+- 用户要求"加载"特定路书时，使用 load_travel_plan
+
+结构化输出要求：
+- 【最佳实践】直接生成结构化数据，调用 save_structured_travel_plan
+- 如需要用户确认，可先用 request_structured_output 引导用户
+- 结构化数据格式包括：destination, days, travel_type, budget_level, attractions, hotels, daily_summary
+- 避免复杂的文本解析，让模型直接提供清晰的数据结构
+
+文件管理特性：
+- 系统自动生成便于检索的文件名：目的地+天数+预算+时间戳
+- 支持同一目的地的多版本保存，用户可以比较不同方案
+- list_travel_plans 按目的地分组显示，便于管理和查找
 
 注意事项：
 - 必须使用 tavily_search 工具获取真实信息
 - 不要编造或猜测信息
 - 所有建议都应基于搜索到的真实数据
+- 生成完整方案后要主动保存路书
         
 请用中文与用户交流，提供准确、实用的旅行规划服务。"""
     )

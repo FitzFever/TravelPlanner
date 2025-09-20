@@ -12,20 +12,20 @@ class Settings(BaseSettings):
     anthropic_base_url: str = "https://api.mjdjourney.cn"  # Claude API base URL，支持代理或自定义端点
     
     # 或者使用兼容 OpenAI 格式的 API（如原 Moonshot）
-    api_key: str = "sk-lAMdhOrqDo6LtM6cPqbb8MSke8xLbe47GDEe808Ts7TcFyrH"
+    api_key: str = "sk-sSMzOmEJVEWA5c8bpJwDkcWePgGxYsxpahrNj9YEcW65lqnQ"
     base_url: str = "https://api.moonshot.cn/v1"
     
     # 模型选择: "claude" 或 "openai"
-    model_type: str = "openai"
+    model_type: str = "claude"
     
     # Claude 模型名称
-    claude_model: str = "claude-sonnet-4-20250514-thinking"  # 或 claude-3-opus-20240229
+    claude_model: str = "claude-sonnet-4-20250514"  # 或 claude-3-opus-20240229
     
     # 搜索配置 - 实际值从.env文件读取
     tavily_api_key: str = "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"
 
     # MCP工具路径配置
-    xhs_mcp_directory: str = "/Users/geng/py/xhs-mcp"  # 小红书MCP项目路径
+    xhs_mcp_directory: str = "/Users/fitzchen/MyProject/xhs-mcp"  # 小红书MCP项目路径
     
     # AgentScope Studio配置 - 实际值从.env文件读取
     studio_url: str = "http://localhost:3000"

@@ -187,11 +187,15 @@ async def create_expert_toolkits() -> Dict[str, Optional[Toolkit]]:
 async def cleanup_expert_mcp():
     """清理所有专家MCP连接"""
     print("🔄 正在清理MCP连接...")
+    
+    # 复制字典避免运行时修改
+    clients_to_close = dict(mcp_clients)
 
-    for name, client in mcp_clients.items():
+    for name, client in clients_to_close.items():
         try:
-            await client.close()
-            print(f"✅ {name} MCP 连接已关闭")
+            if client:
+                await client.close()
+                print(f"✅ {name} MCP 连接已关闭")
         except Exception as e:
             print(f"⚠️ 关闭 {name} MCP 连接时出错: {e}")
 
