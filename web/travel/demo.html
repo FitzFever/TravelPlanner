@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock数据演示 - 旅游助手</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-section h2 {
+            color: #007acc;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .demo-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        .demo-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .demo-btn:hover {
+            background: #005c99;
+        }
+        .demo-btn.secondary {
+            background: #6c757d;
+        }
+        .demo-btn.secondary:hover {
+            background: #545b62;
+        }
+        .demo-output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+        }
+        .api-example {
+            background: #d1ecf1;
+            padding: 15px;
+            border-left: 4px solid #007acc;
+            margin: 15px 0;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚗 车机旅游助手 - Mock数据演示</h1>
+
+    <div class="highlight">
+        <h3>📝 功能说明</h3>
+        <p>此演示页面展示如何通过修改mock数据变量来动态更新页面内容，为后端接入做准备。</p>
+        <p><strong>重要：</strong>在实际项目中，这些mock数据会被替换为真实的API接口调用。</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔧 基础配置管理</h2>
+        <p>修改应用的基础配置信息，如标题、位置等。</p>
+
+        <div class="demo-buttons">
+            <button class="demo-btn" onclick="updateTitle()">更新应用标题</button>
+            <button class="demo-btn" onclick="updateLocation()">更改位置</button>
+            <button class="demo-btn" onclick="resetConfig()">重置配置</button>
+        </div>
+
+        <div class="api-example">
+            <strong>API示例：</strong><br>
+            <code>TravelAPI.updateConfig({title: '北京五日游', location: '北京市'})</code>
+        </div>
+
+        <div class="demo-output" id="config-output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📍 路线点管理</h2>
+        <p>动态添加、删除和修改地图上的路线点。</p>
+
+        <div class="demo-buttons">
+            <button class="demo-btn" onclick="addRandomPoint()">添加随机景点</button>
+            <button class="demo-btn" onclick="addHotelPoint()">添加酒店</button>
+            <button class="demo-btn" onclick="removeLastPoint()">删除最后一个点</button>
+            <button class="demo-btn secondary" onclick="showRoutePoints()">查看所有路线点</button>
+        </div>
+
+        <div class="api-example">
+            <strong>API示例：</strong><br>
+            <code>TravelAPI.addRoutePoint({x: 300, y: 200, name: '故宫', type: 'attraction'})</code>
+        </div>
+
+        <div class="demo-output" id="route-output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🃏 信息卡片管理</h2>
+        <p>更新侧边栏的信息卡片内容，包括天气、酒店、景点信息等。</p>
+
+        <div class="demo-buttons">
+            <button class="demo-btn" onclick="updateWeather()">更新天气信息</button>
+            <button class="demo-btn" onclick="updateHotelStatus()">更新酒店状态</button>
+            <button class="demo-btn" onclick="addNewCard()">添加新卡片</button>
+            <button class="demo-btn secondary" onclick="showCardsData()">查看所有卡片</button>
+        </div>
+
+        <div class="api-example">
+            <strong>API示例：</strong><br>
+            <code>TravelAPI.updateCards([...newCardsArray])</code>
+        </div>
+
+        <div class="demo-output" id="cards-output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📅 行程安排管理</h2>
+        <p>修改7天行程的详细安排，包括时间、地点、价格等信息。</p>
+
+        <div class="demo-buttons">
+            <button class="demo-btn" onclick="updateDay1()">修改第一天行程</button>
+            <button class="demo-btn" onclick="addNewDay()">添加第8天</button>
+            <button class="demo-btn" onclick="updatePrices()">批量更新价格</button>
+            <button class="demo-btn secondary" onclick="showItinerary()">查看完整行程</button>
+        </div>
+
+        <div class="api-example">
+            <strong>API示例：</strong><br>
+            <code>TravelAPI.updateItinerary([...newItineraryArray])</code>
+        </div>
+
+        <div class="demo-output" id="itinerary-output"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>🔄 实时数据监听</h2>
+        <p>演示数据更新的事件监听机制，实现页面内容的自动同步。</p>
+
+        <div class="demo-buttons">
+            <button class="demo-btn" onclick="simulateAPICall()">模拟API调用</button>
+            <button class="demo-btn" onclick="batchUpdate()">批量更新数据</button>
+            <button class="demo-btn secondary" onclick="showEventLog()">查看事件日志</button>
+        </div>
+
+        <div class="api-example">
+            <strong>事件监听示例：</strong><br>
+            <code>DataEvents.on('configUpdated', (newConfig) => { /* 处理配置更新 */ })</code>
+        </div>
+
+        <div class="demo-output" id="events-output"></div>
+    </div>
+
+    <div class="highlight">
+        <h3>🔗 集成指南</h3>
+        <p><strong>1. 后端接入：</strong>将 <code>TravelAPI</code> 中的方法替换为真实的HTTP请求</p>
+        <p><strong>2. 数据格式：</strong>确保后端返回的数据格式与mock数据结构一致</p>
+        <p><strong>3. 事件系统：</strong>保持 <code>DataEvents</code> 事件系统，用于数据更新通知</p>
+        <p><strong>4. 错误处理：</strong>在API调用中添加适当的错误处理和用户反馈</p>
+    </div>
+
+    <!-- 引入Mock数据 -->
+    <script src="mockData.js"></script>
+    <script>
+        // 演示函数
+        function updateTitle() {
+            const newTitle = '北京故宫深度游';
+            TravelAPI.updateConfig({title: newTitle});
+            document.getElementById('config-output').textContent = `应用标题已更新为: ${newTitle}`;
+        }
+
+        function updateLocation() {
+            const newLocation = '北京市东城区';
+            TravelAPI.updateConfig({location: newLocation});
+            document.getElementById('config-output').textContent = `位置已更新为: ${newLocation}`;
+        }
+
+        function resetConfig() {
+            TravelAPI.updateConfig({
+                title: '上海七日游',
+                location: '上海市',
+                totalDays: 7
+            });
+            document.getElementById('config-output').textContent = '配置已重置为默认值';
+        }
+
+        function addRandomPoint() {
+            const attractions = ['天安门广场', '故宫博物院', '天坛公园', '颐和园', '长城'];
+            const randomName = attractions[Math.floor(Math.random() * attractions.length)];
+            const newPoint = {
+                x: Math.random() * 600 + 100,
+                y: Math.random() * 400 + 100,
+                name: randomName,
+                type: 'attraction'
+            };
+            TravelAPI.addRoutePoint(newPoint);
+            document.getElementById('route-output').textContent = `已添加景点: ${randomName}`;
+        }
+
+        function addHotelPoint() {
+            const hotels = ['北京饭店', '王府井大饭店', '前门建国饭店'];
+            const randomHotel = hotels[Math.floor(Math.random() * hotels.length)];
+            const newPoint = {
+                x: Math.random() * 600 + 100,
+                y: Math.random() * 400 + 100,
+                name: randomHotel,
+                type: 'hotel'
+            };
+            TravelAPI.addRoutePoint(newPoint);
+            document.getElementById('route-output').textContent = `已添加酒店: ${randomHotel}`;
+        }
+
+        function removeLastPoint() {
+            const points = window.RoutePointsData;
+            if (points.length > 0) {
+                const lastPoint = points[points.length - 1];
+                TravelAPI.removeRoutePoint(lastPoint.id);
+                document.getElementById('route-output').textContent = `已删除: ${lastPoint.name}`;
+            } else {
+                document.getElementById('route-output').textContent = '没有可删除的路线点';
+            }
+        }
+
+        function showRoutePoints() {
+            const points = window.RoutePointsData;
+            const output = points.map(p => `${p.name} (${p.type}) - 坐标(${p.x}, ${p.y})`).join('\n');
+            document.getElementById('route-output').textContent = `当前路线点 (${points.length}个):\n${output}`;
+        }
+
+        function updateWeather() {
+            const cards = [...window.CardsData];
+            const weatherCard = cards.find(c => c.id === 'weather-general');
+            if (weatherCard) {
+                weatherCard.value = Math.floor(Math.random() * 15 + 15) + '°C';
+                weatherCard.content = '北京市多云，微风，适合出行';
+                weatherCard.time = new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'});
+                TravelAPI.updateCards(cards);
+                document.getElementById('cards-output').textContent = `天气已更新: ${weatherCard.value}`;
+            }
+        }
+
+        function updateHotelStatus() {
+            const cards = [...window.CardsData];
+            const hotelCards = cards.filter(c => c.type === 'hotel');
+            hotelCards.forEach(card => {
+                const statuses = ['available', 'busy'];
+                const statusTexts = ['有房', '紧张'];
+                const randomIndex = Math.floor(Math.random() * statuses.length);
+                card.status = statuses[randomIndex];
+                card.statusText = statusTexts[randomIndex];
+            });
+            TravelAPI.updateCards(cards);
+            document.getElementById('cards-output').textContent = `已更新 ${hotelCards.length} 个酒店的状态`;
+        }
+
+        function addNewCard() {
+            const cards = [...window.CardsData];
+            const newCard = {
+                id: 'demo-card-' + Date.now(),
+                type: 'attraction',
+                title: '演示景点',
+                content: '这是一个演示添加的新景点卡片',
+                value: '¥50',
+                status: 'available',
+                statusText: '开放中',
+                icon: '🏯',
+                pointTypes: ['all'],
+                pointId: null,
+                time: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})
+            };
+            cards.push(newCard);
+            TravelAPI.updateCards(cards);
+            document.getElementById('cards-output').textContent = `已添加新卡片: ${newCard.title}`;
+        }
+
+        function showCardsData() {
+            const cards = window.CardsData;
+            const output = cards.map(c => `${c.title} (${c.type}) - ${c.value}`).join('\n');
+            document.getElementById('cards-output').textContent = `所有卡片 (${cards.length}个):\n${output}`;
+        }
+
+        function updateDay1() {
+            const itinerary = [...window.ItineraryData];
+            if (itinerary[0]) {
+                itinerary[0].title = '第一天 - 故宫天安门文化之旅';
+                itinerary[0].summary = '2个景点 · 2个用餐 · 1晚住宿';
+                itinerary[0].items[0].title = '天安门广场';
+                itinerary[0].items[0].description = '中华人民共和国的象征，观看升旗仪式';
+                TravelAPI.updateItinerary(itinerary);
+                document.getElementById('itinerary-output').textContent = '第一天行程已更新为北京主题';
+            }
+        }
+
+        function addNewDay() {
+            const itinerary = [...window.ItineraryData];
+            const newDay = {
+                day: 8,
+                date: '2024-01-22',
+                title: '第八天 - 额外延伸游',
+                summary: '1个景点 · 1个用餐',
+                items: [
+                    {
+                        time: '10:00',
+                        type: 'attraction',
+                        title: '圆明园',
+                        description: '历史遗迹，感受历史沧桑',
+                        price: '¥25',
+                        duration: '3小时',
+                        icon: '🏛️'
+                    }
+                ]
+            };
+            itinerary.push(newDay);
+            TravelAPI.updateItinerary(itinerary);
+            document.getElementById('itinerary-output').textContent = '已添加第8天行程';
+        }
+
+        function updatePrices() {
+            const itinerary = [...window.ItineraryData];
+            let updateCount = 0;
+            itinerary.forEach(day => {
+                day.items.forEach(item => {
+                    if (item.price && item.price.includes('¥')) {
+                        const currentPrice = parseInt(item.price.replace('¥', ''));
+                        const newPrice = Math.floor(currentPrice * (0.8 + Math.random() * 0.4)); // ±20%变动
+                        item.price = '¥' + newPrice;
+                        updateCount++;
+                    }
+                });
+            });
+            TravelAPI.updateItinerary(itinerary);
+            document.getElementById('itinerary-output').textContent = `已更新 ${updateCount} 个项目的价格`;
+        }
+
+        function showItinerary() {
+            const itinerary = window.ItineraryData;
+            const output = itinerary.map(day => `${day.title} - ${day.summary}`).join('\n');
+            document.getElementById('itinerary-output').textContent = `行程安排 (${itinerary.length}天):\n${output}`;
+        }
+
+        // 事件监听演示
+        let eventLog = [];
+
+        function simulateAPICall() {
+            // 模拟一个完整的API调用流程
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 开始API调用`);
+
+            setTimeout(() => {
+                // 模拟网络延迟
+                TravelAPI.updateConfig({
+                    title: '模拟API更新 - ' + Math.floor(Math.random() * 1000)
+                });
+                eventLog.push(`[${new Date().toLocaleTimeString()}] 配置更新完成`);
+
+                setTimeout(() => {
+                    const newCard = {
+                        id: 'api-card-' + Date.now(),
+                        type: 'weather',
+                        title: 'API天气',
+                        content: '通过API获取的天气信息',
+                        value: Math.floor(Math.random() * 30) + '°C',
+                        status: 'available',
+                        statusText: '实时',
+                        icon: '🌤️',
+                        pointTypes: ['all'],
+                        pointId: null,
+                        time: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})
+                    };
+
+                    const cards = [...window.CardsData, newCard];
+                    TravelAPI.updateCards(cards);
+                    eventLog.push(`[${new Date().toLocaleTimeString()}] 卡片数据更新完成`);
+
+                    document.getElementById('events-output').textContent = eventLog.slice(-10).join('\n');
+                }, 500);
+            }, 1000);
+
+            document.getElementById('events-output').textContent = eventLog.slice(-10).join('\n');
+        }
+
+        function batchUpdate() {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 开始批量更新`);
+
+            // 同时更新多个数据源
+            Promise.all([
+                TravelAPI.updateConfig({location: '批量更新测试'}),
+                TravelAPI.updateCards(window.CardsData.map(card => ({
+                    ...card,
+                    time: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute: '2-digit'})
+                })))
+            ]).then(() => {
+                eventLog.push(`[${new Date().toLocaleTimeString()}] 批量更新完成`);
+                document.getElementById('events-output').textContent = eventLog.slice(-10).join('\n');
+            });
+        }
+
+        function showEventLog() {
+            document.getElementById('events-output').textContent = `事件日志 (最近${eventLog.length}条):\n` + eventLog.join('\n');
+        }
+
+        // 监听所有数据更新事件
+        DataEvents.on('configUpdated', (data) => {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 事件: configUpdated`);
+        });
+
+        DataEvents.on('cardsUpdated', (data) => {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 事件: cardsUpdated (${data.length}个卡片)`);
+        });
+
+        DataEvents.on('routePointsUpdated', (data) => {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 事件: routePointsUpdated (${data.length}个点)`);
+        });
+
+        DataEvents.on('itineraryUpdated', (data) => {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] 事件: itineraryUpdated (${data.length}天)`);
+        });
+
+        // 初始化显示
+        document.getElementById('config-output').textContent = '点击按钮开始演示配置管理功能';
+        document.getElementById('route-output').textContent = '点击按钮开始演示路线点管理功能';
+        document.getElementById('cards-output').textContent = '点击按钮开始演示卡片管理功能';
+        document.getElementById('itinerary-output').textContent = '点击按钮开始演示行程管理功能';
+        document.getElementById('events-output').textContent = '点击按钮开始演示事件监听功能';
+
+        console.log('Mock数据演示页面已加载');
+        console.log('可以通过浏览器控制台直接调用API：');
+        console.log('- TravelAPI.updateConfig({title: "新标题"})');
+        console.log('- TravelAPI.addRoutePoint({x: 100, y: 100, name: "测试点", type: "attraction"})');
+        console.log('- DataEvents.on("configUpdated", (data) => console.log("配置更新:", data))');
+    </script>
+</body>
+</html>

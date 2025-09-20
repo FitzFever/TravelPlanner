@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>车机旅游助手</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 头部标题栏 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>旅游助手</h1>
+            </div>
+            <div class="header-right">
+                <button class="overview-btn" id="overview-btn" title="查看总览">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+                    </svg>
+                </button>
+                <button class="theme-toggle" id="theme-toggle" title="切换主题">
+                    <svg class="theme-icon sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM18.894 17.834a.75.75 0 00-1.06 1.06l-1.591-1.59a.75.75 0 111.06-1.061l1.591 1.59zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                    </svg>
+                    <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                        <path d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z"/>
+                    </svg>
+                </button>
+                <span class="time" id="current-time"></span>
+                <span class="location">当前位置：上海市</span>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 左侧区域 (70%) -->
+            <section class="left-section">
+                <!-- 卡片消息栏 -->
+                <aside class="cards-sidebar">
+                    <div class="cards-header">
+                        <h3>信息卡片</h3>
+                        <button class="cards-refresh" id="cards-refresh" title="刷新信息">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="cards-container" id="cards-container">
+                        <!-- 卡片内容将通过JavaScript动态生成 -->
+                    </div>
+                </aside>
+
+                <!-- 旅游规划模块 -->
+                <section class="planning-section">
+                    <div class="planning-header">
+                        <h2>旅游路线规划</h2>
+                        <div class="planning-controls">
+                            <button class="btn-primary" id="add-point">添加景点</button>
+                            <button class="btn-secondary" id="add-hotel">添加酒店</button>
+                            <button class="btn-secondary" id="optimize-route">优化路线</button>
+                        </div>
+                    </div>
+
+                    <!-- 规划图容器 -->
+                    <div class="route-canvas-container">
+                        <svg id="route-canvas" viewBox="0 0 800 600">
+                            <!-- 背景定义 -->
+                            <defs>
+                                <!-- 地图背景图案 -->
+                                <pattern id="map-bg" width="800" height="600" patternUnits="userSpaceOnUse">
+                                    <!-- 模拟地图背景 -->
+                                    <rect width="800" height="600" fill="#f0f8ff"/>
+                                    <!-- 模拟河流 -->
+                                    <path d="M 0 300 Q 200 250 400 300 T 800 320" stroke="#4da6d9" stroke-width="15" fill="none" opacity="0.6"/>
+                                    <!-- 模拟公园绿地 -->
+                                    <circle cx="200" cy="200" r="40" fill="#90EE90" opacity="0.3"/>
+                                    <circle cx="600" cy="450" r="50" fill="#90EE90" opacity="0.3"/>
+                                </pattern>
+
+                                <!-- 网格图案 -->
+                                <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                                    <path d="M 50 0 L 0 0 0 50" fill="none" stroke="var(--grid-color)" stroke-width="1" opacity="0.2"/>
+                                </pattern>
+                            </defs>
+
+                            <!-- 地图背景 -->
+                            <rect width="100%" height="100%" fill="url(#map-bg)" />
+                            <!-- 网格覆盖 -->
+                            <rect width="100%" height="100%" fill="url(#grid)" />
+
+                            <!-- 路线连接线 -->
+                            <g id="route-lines"></g>
+
+                            <!-- 景点节点 -->
+                            <g id="route-points"></g>
+
+                            <!-- 卫星节点（餐饮等） -->
+                            <g id="satellite-points"></g>
+                        </svg>
+                    </div>
+
+                    <!-- 底部信息面板 -->
+                    <div class="route-info">
+                        <div class="info-item">
+                            <span class="info-label">总距离：</span>
+                            <span class="info-value" id="total-distance">0 km</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">预计时间：</span>
+                            <span class="info-value" id="estimated-time">0 小时</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">景点数量：</span>
+                            <span class="info-value" id="point-count">0 个</span>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <!-- 右侧对话交互模块 (30%) -->
+            <section class="chat-section">
+                <div class="chat-header">
+                    <h2>智能助手</h2>
+                    <div class="chat-status">
+                        <span class="status-dot online"></span>
+                        <span>在线</span>
+                    </div>
+                </div>
+
+                <!-- 聊天消息区域 -->
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message assistant">
+                        <div class="message-avatar">
+                            <div class="avatar-icon">🤖</div>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-text">您好！我是您的旅游助手，可以帮您规划旅游路线、推荐景点、查询天气等。请问需要什么帮助？</div>
+                            <div class="message-time">13:20</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="chat-input-container">
+                    <div class="input-wrapper">
+                        <input type="text" id="chat-input" placeholder="请输入您的问题..." autocomplete="off">
+                        <button class="send-btn" id="send-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 1c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2s2-.9 2-2V3c0-1.1-.9-2-2-2zm0 16c-2.2 0-4-1.8-4-4H6c0 3.3 2.7 6 6 6s6-2.7 6-6h-2c0 2.2-1.8 4-4 4zm-1 2v2h2v-2h-2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 快捷操作按钮 -->
+                <div class="quick-actions">
+                    <button class="quick-btn" data-action="recommend">推荐景点</button>
+                    <button class="quick-btn" data-action="weather">查看天气</button>
+                    <button class="quick-btn" data-action="traffic">路况信息</button>
+                    <button class="quick-btn" data-action="deviation">路线偏离</button>
+                    <button class="quick-btn" data-action="alternative">换个其他景点</button>
+                    <button class="quick-btn" data-action="delay">休息了4小时来不及去了</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 总览弹窗 -->
+    <div id="overview-popup" class="overview-popup">
+        <div class="popup-overlay" id="popup-overlay"></div>
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2>旅游行程总览</h2>
+                <button class="popup-close" id="popup-close" title="关闭">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.3 5.71c-.39-.39-1.02-.39-1.41 0L12 10.59 7.11 5.7c-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41L10.59 12 5.7 16.89c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0L12 13.41l4.89 4.88c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="popup-body" id="popup-body">
+                <!-- 滑动容器 -->
+                <div class="days-container" id="days-container">
+                    <!-- 日程内容将通过JavaScript动态生成 -->
+                </div>
+
+                <!-- 左右箭头 -->
+                <div class="slide-arrows arrow-left" id="arrow-left">
+                    <button class="arrow-btn" id="prev-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="slide-arrows arrow-right" id="arrow-right">
+                    <button class="arrow-btn" id="next-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 底部导航 -->
+                <div class="slide-navigation">
+                    <button class="nav-btn" id="nav-prev">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
+                    <div class="day-indicators" id="day-indicators">
+                        <!-- 指示器将通过JavaScript动态生成 -->
+                    </div>
+                    <button class="nav-btn" id="nav-next">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Mock数据 -->
+    <script src="mockData.js"></script>
+    <!-- 引入主应用脚本 -->
+    <script src="script.js"></script>
+</body>
+</html>
