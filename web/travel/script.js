@@ -17,6 +17,45 @@ class TravelAssistant {
         this.init();
     }
 
+    // 解析Markdown文本
+    parseMarkdown(text) {
+        // 确保marked库已加载
+        if (typeof marked === 'undefined') {
+            console.warn('Marked库未加载，返回原始文本');
+            return text;
+        }
+
+        try {
+            // 配置marked选项
+            marked.setOptions({
+                breaks: true, // 支持换行
+                gfm: true, // 支持GitHub风格的Markdown
+                sanitize: false, // 不对HTML进行清理（因为我们信任内容）
+                smartLists: true,
+                smartypants: false
+            });
+
+            // 解析markdown
+            return marked.parse(text);
+        } catch (error) {
+            console.error('Markdown解析失败:', error);
+            return text;
+        }
+    }
+
+    // 安全地渲染HTML内容
+    safeRenderHTML(htmlContent) {
+        // 创建临时元素来清理可能的危险HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+
+        // 移除危险的脚本标签
+        const scripts = tempDiv.querySelectorAll('script');
+        scripts.forEach(script => script.remove());
+
+        return tempDiv.innerHTML;
+    }
+
     async init() {
         this.loadThemePreference();
         this.updateTime();
@@ -375,7 +414,7 @@ class TravelAssistant {
         }
     }
 
-    addChatMessage(text, sender = 'assistant', messageId = null) {
+    addChatMessage(text, sender = 'assistant', messageId = null, agentName = null) {
         const messagesContainer = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -390,12 +429,17 @@ class TravelAssistant {
             minute: '2-digit'
         });
 
+        // 解析Markdown内容
+        const parsedText = sender === 'assistant' ? this.parseMarkdown(text) : text;
+        const safeHTML = sender === 'assistant' ? this.safeRenderHTML(parsedText) : text;
+
         messageDiv.innerHTML = `
             <div class="message-avatar">
                 <div class="avatar-icon">${sender === 'user' ? '👤' : '🤖'}</div>
             </div>
             <div class="message-content">
-                <div class="message-text">${text}</div>
+                ${agentName ? `<div class="message-agent-name">${agentName}</div>` : ''}
+                <div class="message-text">${safeHTML}</div>
                 <div class="message-time">${currentTime}</div>
             </div>
         `;
@@ -423,11 +467,11 @@ class TravelAssistant {
         if (this.messageIdMap.has(messageId)) {
             // 更新现有消息
             console.log(`更新现有消息 ID: ${messageId}`);
-            this.updateChatMessageContent(messageId, formattedContent, data.timestamp);
+            this.updateChatMessageContent(messageId, formattedContent, data.timestamp, agentName);
         } else {
             // 创建新消息
             console.log(`创建新消息 ID: ${messageId}`);
-            this.addChatMessageWithContent(formattedContent, 'assistant', messageId);
+            this.addChatMessageWithContent(formattedContent, 'assistant', messageId, agentName);
         }
     }
 
@@ -493,7 +537,7 @@ class TravelAssistant {
     }
 
     // 添加带格式化内容的聊天消息
-    addChatMessageWithContent(formattedContent, sender = 'assistant', messageId = null) {
+    addChatMessageWithContent(formattedContent, sender = 'assistant', messageId = null, agentName = null) {
         const messagesContainer = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -516,6 +560,7 @@ class TravelAssistant {
                 <div class="avatar-icon">${sender === 'user' ? '👤' : '🤖'}</div>
             </div>
             <div class="message-content">
+                ${agentName ? `<div class="message-agent-name">${agentName}</div>` : ''}
                 <div class="message-text">${messageContentHtml}</div>
                 <div class="message-time">${currentTime}</div>
             </div>
@@ -536,7 +581,9 @@ class TravelAssistant {
     // 构建消息内容HTML
     buildMessageContentHtml(formattedContent) {
         if (typeof formattedContent === 'string') {
-            return formattedContent;
+            // 解析Markdown
+            const parsedText = this.parseMarkdown(formattedContent);
+            return this.safeRenderHTML(parsedText);
         }
 
         if (!Array.isArray(formattedContent)) {
@@ -547,7 +594,10 @@ class TravelAssistant {
         formattedContent.forEach((part, index) => {
             switch (part.type) {
                 case 'text':
-                    html += `<div class="text-content">${part.content}</div>`;
+                    // 解析Markdown文本内容
+                    const parsedText = this.parseMarkdown(part.content);
+                    const safeHTML = this.safeRenderHTML(parsedText);
+                    html += `<div class="text-content">${safeHTML}</div>`;
                     break;
 
                 case 'tool_use':
@@ -593,7 +643,7 @@ class TravelAssistant {
                                     <strong>结果预览:</strong>
                                     <div class="tool-result-preview">${part.details.resultText}</div>
                                 </div>
-                                ${part.details.fullResult.length > 200 ? `
+                                ${part.details.fullResult && part.details.fullResult.length > 200 ? `
                                     <div class="tool-detail-item">
                                         <button class="tool-expand-btn" onclick="showFullResult(this)"
                                                 data-full-result="${encodeURIComponent(part.details.fullResult)}">
@@ -612,30 +662,26 @@ class TravelAssistant {
     }
 
     // 更新现有消息的格式化内容
-    updateChatMessageContent(messageId, formattedContent, timestamp = null) {
+    updateChatMessageContent(messageId, formattedContent, timestamp = null, agentName = null) {
         const messageElement = this.messageIdMap.get(messageId);
         if (!messageElement) {
             console.warn(`未找到ID为 ${messageId} 的消息元素`);
             return;
         }
 
-        // 更新消息文本内容
-        const messageTextElement = messageElement.querySelector('.message-text');
-        if (messageTextElement) {
+        // 更新消息内容区域
+        const messageContentElement = messageElement.querySelector('.message-content');
+        if (messageContentElement) {
             const newContentHtml = this.buildMessageContentHtml(formattedContent);
-            messageTextElement.innerHTML = newContentHtml;
-        }
+            const currentTime = timestamp ?
+                new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) :
+                new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
-        // 更新时间戳（如果提供）
-        if (timestamp) {
-            const messageTimeElement = messageElement.querySelector('.message-time');
-            if (messageTimeElement) {
-                const time = new Date(timestamp).toLocaleTimeString('zh-CN', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                messageTimeElement.textContent = time;
-            }
+            messageContentElement.innerHTML = `
+                ${agentName ? `<div class="message-agent-name">${agentName}</div>` : ''}
+                <div class="message-text">${newContentHtml}</div>
+                <div class="message-time">${currentTime}</div>
+            `;
         }
 
         // 重新设置工具调用的展开/折叠事件
@@ -655,13 +701,114 @@ class TravelAssistant {
 
     handleAIResponse(userMessage) {
         const responses = {
-            '推荐景点': '根据您的位置，我推荐以下景点：外滩、东方明珠、豫园、田子坊。这些都是上海的经典景点，适合一日游。',
-            '查看天气': '今天上海天气晴朗，温度22-28°C，适合出行。建议准备防晒用品。',
-            '路况信息': '当前主要道路畅通，预计到达各景点无明显拥堵。建议避开晚高峰时段17:00-19:00。',
-            '规划路线': '我已为您规划了最优路线，总行程约50公里，预计需要6小时。请查看左侧地图。'
+            '推荐景点': `根据您的位置，我推荐以下景点：
+
+## 🏛️ 上海经典景点
+
+### 热门景点
+1. **外滩** - 万国建筑博览群
+2. **东方明珠** - 上海地标建筑
+3. **豫园** - 明代古典园林
+4. **田子坊** - 创意文化街区
+
+### 门票信息
+| 景点 | 门票价格 | 开放时间 |
+|------|----------|----------|
+| 外滩 | 免费 | 全天开放 |
+| 东方明珠 | ¥160 | 8:00-21:30 |
+| 豫园 | ¥40 | 9:00-17:30 |
+| 田子坊 | 免费 | 10:00-23:00 |
+
+> **提示**: 这些都是上海的经典景点，适合一日游。建议提前\`在线预订\`门票。
+
+---
+
+**交通建议**: 建议使用地铁出行，方便快捷！`,
+
+            '查看天气': `## ☀️ 上海天气预报
+
+### 今日天气
+- **温度**: 22-28°C
+- **天气**: 晴朗
+- **湿度**: 65%
+- **风速**: 微风 2级
+
+### 未来三天
+- **明天**: 多云，24-29°C
+- **后天**: 小雨，20-25°C
+- **大后天**: 晴，23-27°C
+
+> **出行建议**: 今天天气**非常适合**出行，建议携带：
+> - 防晒用品 🧴
+> - 遮阳帽 👒
+> - 充足的水 💧`,
+
+            '路况信息': `## 🚗 实时路况信息
+
+### 当前状况
+- **主要道路**: \`畅通\` ✅
+- **高架路段**: \`轻微拥堵\` ⚠️
+- **隧道通行**: \`正常\` ✅
+
+### 注意事项
+1. **避开时段**: 17:00-19:00 晚高峰
+2. **推荐路线**:
+   - 外滩 → 东方明珠：*地铁2号线*
+   - 豫园 → 田子坊：*步行 + 地铁*
+
+\`\`\`
+预计到达时间：
+外滩 → 东方明珠: 15分钟
+东方明珠 → 豫园: 25分钟
+豫园 → 田子坊: 20分钟
+\`\`\`
+
+**实时更新**: 每5分钟更新一次`,
+
+            '规划路线': `## 🗺️ 智能路线规划
+
+### 优化路线已生成
+
+**总行程**: \`约50公里\` | **预计时间**: \`6小时\`
+
+#### 推荐行程
+1. **09:00** - 外滩 (*起点*)
+2. **11:30** - 东方明珠
+3. **14:00** - 豫园
+4. **16:30** - 田子坊 (*终点*)
+
+> **路线特色**:
+> - ✨ 涵盖**历史**与**现代**
+> - 🍜 包含**美食**推荐
+> - 📸 **拍照打卡**点丰富
+> - 🚇 **交通便利**，全程地铁
+
+### 费用预估
+- 交通费: ¥20
+- 门票: ¥200
+- 餐饮: ¥300
+- **总计**: ~¥520
+
+请查看左侧地图获取详细路线！`
         };
 
-        let response = '我理解了您的需求。';
+        let response = `我理解了您的需求。
+
+## 🤖 智能助手回复
+
+关于 **"${userMessage}"** 的问题，我建议您可以：
+
+### 可用功能
+- 📍 推荐景点
+- 🌤️ 天气查询
+- 🚗 路况信息
+- 🗺️ 路线规划
+
+> 请使用下方的**快捷按钮**获取详细信息，或详细描述您的需求。
+
+---
+
+*如需更多帮助，请随时告诉我！*`;
 
         // 简单的关键词匹配
         if (userMessage.includes('景点') || userMessage.includes('推荐')) {
@@ -672,8 +819,6 @@ class TravelAssistant {
             response = responses['路况信息'];
         } else if (userMessage.includes('规划') || userMessage.includes('路线')) {
             response = responses['规划路线'];
-        } else {
-            response = `关于"${userMessage}"，我建议您可以通过快捷按钮获取推荐景点、天气和路况信息。如需具体帮助，请详细描述您的需求。`;
         }
 
         this.addChatMessage(response, 'assistant');
