@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     tavily_api_key: str = "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"
 
     # MCP工具路径配置
-    xhs_mcp_directory: str = "/Users/fitzchen/MyProject/xhs-mcp"  # 小红书MCP项目路径
+    xhs_mcp_directory: str = "/Users/geng/py/xhs-mcp"  # 小红书MCP项目路径
     
     # AgentScope Studio配置 - 实际值从.env文件读取
     studio_url: str = "http://localhost:3000"

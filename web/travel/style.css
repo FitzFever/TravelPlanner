@@ -1460,3 +1460,146 @@ body.light-theme .satellite-point.restaurant circle {
         flex-wrap: wrap;
     }
 }
+
+/* 工具调用样式 */
+.tool-call {
+    margin: 8px 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--accent-bg);
+    overflow: hidden;
+}
+
+.tool-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.tool-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tool-icon {
+    font-size: 16px;
+    margin-right: 8px;
+    min-width: 20px;
+}
+
+.tool-summary {
+    flex: 1;
+    font-weight: 500;
+}
+
+.tool-toggle {
+    font-size: 12px;
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+}
+
+.tool-details {
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.tool-detail-item {
+    margin-bottom: 12px;
+}
+
+.tool-detail-item:last-child {
+    margin-bottom: 0;
+}
+
+.tool-detail-item strong {
+    color: var(--primary-color);
+    display: inline-block;
+    min-width: 80px;
+}
+
+.tool-input {
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+    font-size: 12px;
+    color: var(--text-muted);
+    overflow-x: auto;
+}
+
+.tool-result-preview {
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.tool-expand-btn {
+    background: var(--primary-color);
+    color: var(--primary-bg);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.tool-expand-btn:hover {
+    background: var(--success-color);
+}
+
+/* 工具调用类型样式 */
+.tool-use {
+    border-left: 4px solid var(--warning-color);
+}
+
+.tool-result {
+    border-left: 4px solid var(--success-color);
+}
+
+/* 文本内容样式 */
+.text-content {
+    margin: 4px 0;
+    line-height: 1.5;
+}
+
+/* 工具结果模态框 */
+.tool-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .tool-header {
+        padding: 10px 12px;
+    }
+
+    .tool-details {
+        padding: 12px;
+    }
+
+    .tool-input, .tool-result-preview {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+}

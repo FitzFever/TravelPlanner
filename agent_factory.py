@@ -5,10 +5,14 @@ Agent工厂模块 - 根据配置创建不同数量和类型的Agent
 """
 
 from typing import Dict, List
+
+import json
 from agentscope.agent import ReActAgent
 from agentscope.model import OpenAIChatModel, AnthropicChatModel
 from agentscope.memory import InMemoryMemory
 from agentscope.tool import Toolkit
+from agentscope.message import Msg
+import asyncio
 
 # 使用本地的 Formatter
 from formatter import KimiMultiAgentFormatter
@@ -16,6 +20,38 @@ from formatter import KimiMultiAgentFormatter
 from config import Settings
 from tools_expert import create_expert_toolkits
 from tools_storage import save_travel_plan, load_travel_plan, list_travel_plans, save_structured_travel_plan, request_structured_output
+
+
+class TravelReActAgent(ReActAgent):
+    """
+    自定义的旅行规划ReActAgent，支持流式输出到WebSocket
+    """
+
+    def __init__(self, *args, websocket_callback=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.websocket_callback = websocket_callback
+        self.agent_name = kwargs.get('name', 'Agent')
+
+    def set_websocket_callback(self, callback):
+        """设置WebSocket回调函数"""
+        self.websocket_callback = callback
+
+    async def print(self, msg: Msg, last: bool = True):
+        """重写print方法，捕获Agent的输出并发送到WebSocket"""
+        # 调用原始的print方法
+        await super().print(msg, last)
+
+        #如果有WebSocket回调，发送消息
+        if self.websocket_callback:
+            # 转换为json
+            message = msg.to_dict()
+            # 使用asyncio创建任务来发送WebSocket消息
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.websocket_callback(self.agent_name, message))
+            except RuntimeError:
+                # 如果没有运行的事件循环，暂时忽略
+                pass
 
 
 def get_formatter(settings: Settings):
@@ -55,7 +91,7 @@ def create_model(settings: Settings):
         )
 
 
-def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
+def create_coordinator(settings: Settings, toolkit=None) -> TravelReActAgent:
     """
     创建协调Agent（所有模式通用）
     
@@ -73,8 +109,8 @@ def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
     toolkit.register_tool_function(load_travel_plan)
     toolkit.register_tool_function(list_travel_plans)
     toolkit.register_tool_function(request_structured_output)
-    
-    return ReActAgent(
+
+    return TravelReActAgent(
         name="旅行规划师",
         model=create_model(settings),
         formatter=get_formatter(settings),
@@ -127,7 +163,7 @@ def create_coordinator(settings: Settings, toolkit=None) -> ReActAgent:
     )
 
 
-def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
+def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, TravelReActAgent]:
     """
     创建基础版专家Agent（3个）
     快速Demo和开发测试
@@ -142,7 +178,7 @@ def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Di
     model = create_model(settings)
 
     experts = {
-        "search_expert": ReActAgent(
+        "search_expert": TravelReActAgent(
             name="搜索专家",
             model=model,
             formatter=get_formatter(settings),
@@ -161,7 +197,7 @@ def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Di
             请优先使用工具获取真实、准确的信息，不要编造数据。"""
         ),
 
-        "plan_expert": ReActAgent(
+        "plan_expert": TravelReActAgent(
             name="规划专家",
             model=model,
             formatter=get_formatter(settings),
@@ -179,7 +215,7 @@ def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Di
             设计高效、合理的行程安排。"""
         ),
 
-        "budget_expert": ReActAgent(
+        "budget_expert": TravelReActAgent(
             name="预算专家",
             model=model,
             formatter=get_formatter(settings),
@@ -201,7 +237,7 @@ def create_basic_experts(settings: Settings, expert_toolkits: Dict = None) -> Di
     return experts
 
 
-def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
+def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, TravelReActAgent]:
     """
     创建标准版专家Agent（4个）
     适合常规使用场景
@@ -216,7 +252,7 @@ def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) ->
     model = create_model(settings)
 
     experts = {
-        "poi_expert": ReActAgent(
+        "poi_expert": TravelReActAgent(
             name="POI专家",
             model=model,
             formatter=get_formatter(settings),
@@ -235,7 +271,7 @@ def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) ->
             提供专业的景点推荐。"""
         ),
 
-        "route_expert": ReActAgent(
+        "route_expert": TravelReActAgent(
             name="路线专家",
             model=model,
             formatter=get_formatter(settings),
@@ -253,7 +289,7 @@ def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) ->
             优化行程路线。"""
         ),
 
-        "local_expert": ReActAgent(
+        "local_expert": TravelReActAgent(
             name="当地专家",
             model=model,
             formatter=get_formatter(settings),
@@ -272,7 +308,7 @@ def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) ->
             提供深度的当地文化体验建议。"""
         ),
 
-        "budget_expert": ReActAgent(
+        "budget_expert": TravelReActAgent(
             name="预算专家",
             model=model,
             formatter=get_formatter(settings),
@@ -294,7 +330,7 @@ def create_standard_experts(settings: Settings, expert_toolkits: Dict = None) ->
     return experts
 
 
-def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, ReActAgent]:
+def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dict[str, TravelReActAgent]:
     """
     创建完整版专家Agent（5-6个）
     适合高端定制需求
@@ -312,7 +348,7 @@ def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dic
     model = create_model(settings)
 
     # 添加额外的专家
-    experts["hotel_expert"] = ReActAgent(
+    experts["hotel_expert"] = TravelReActAgent(
         name="住宿专家",
         model=model,
         formatter=get_formatter(settings),
@@ -333,7 +369,7 @@ def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dic
 
     # 可选：添加美食专家
     if settings.debug:  # 在调试模式下添加第6个专家
-        experts["food_expert"] = ReActAgent(
+        experts["food_expert"] = TravelReActAgent(
             name="美食专家",
             model=model,
             formatter=get_formatter(settings),
@@ -355,7 +391,7 @@ def create_full_experts(settings: Settings, expert_toolkits: Dict = None) -> Dic
     return experts
 
 
-def create_consultation_expert(settings: Settings) -> ReActAgent:
+def create_consultation_expert(settings: Settings) -> TravelReActAgent:
     """
     创建咨询专家Agent - 负责系统性收集用户旅行需求
 
@@ -363,9 +399,9 @@ def create_consultation_expert(settings: Settings) -> ReActAgent:
         settings: 应用配置
 
     Returns:
-        ReActAgent: 咨询专家Agent
+        TravelReActAgent: 咨询专家Agent
     """
-    return ReActAgent(
+    return TravelReActAgent(
         name="咨询专家",
         model=create_model(settings),
         formatter=get_formatter(settings),
@@ -408,7 +444,7 @@ def create_consultation_expert(settings: Settings) -> ReActAgent:
     )
 
 
-async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, ReActAgent]:
+async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, TravelReActAgent]:
     """
     创建标准的5个专家Agent（基于文档定义）
 
@@ -417,7 +453,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
         toolkit: 协调员使用的工具集（保持向后兼容）
 
     Returns:
-        Dict[str, ReActAgent]: 专家Agent字典
+        Dict[str, TravelReActAgent]: 专家Agent字典
     """
     print("🔧 正在为专家分配工具...")
     expert_toolkits = await create_expert_toolkits()
@@ -428,7 +464,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
     formatter = get_formatter(settings)
 
     experts = {
-        "poi_expert": ReActAgent(
+        "poi_expert": TravelReActAgent(
             name="景点研究专家",
             model=model,
             formatter=formatter,
@@ -459,7 +495,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
 - 注明最佳游览时间和注意事项"""
         ),
 
-        "route_expert": ReActAgent(
+        "route_expert": TravelReActAgent(
             name="路线优化专家",
             model=model,
             formatter=formatter,
@@ -489,7 +525,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
 - 提供备选路线方案"""
         ),
 
-        "local_expert": ReActAgent(
+        "local_expert": TravelReActAgent(
             name="当地专家",
             model=model,
             formatter=formatter,
@@ -520,7 +556,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
 - 提供实用的生活贴士和注意事项"""
         ),
 
-        "hotel_expert": ReActAgent(
+        "hotel_expert": TravelReActAgent(
             name="住宿专家",
             model=model,
             formatter=formatter,
@@ -551,7 +587,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
 - 提供预订建议和注意事项"""
         ),
 
-        "budget_expert": ReActAgent(
+        "budget_expert": TravelReActAgent(
             name="预算分析专家",
             model=model,
             formatter=formatter,
@@ -585,7 +621,7 @@ async def create_expert_agents(settings: Settings, toolkit=None) -> Dict[str, Re
     return experts
 
 
-def list_agents(experts: Dict[str, ReActAgent]) -> str:
+def list_agents(experts: Dict[str, TravelReActAgent]) -> str:
     """
     列出当前激活的Agent
     

@@ -33,6 +33,8 @@ class TravelPlannerServer:
         self.connected_clients: Set = set()
         self.client_sessions: Dict[str, dict] = {}
         self.global_agents: Dict = {}
+        self.current_websocket: Optional = None  # 当前活跃的WebSocket连接
+        self.message_cache: Dict[str, dict] = {}  # 用于跟踪消息ID和内容
 
     async def initialize_agents(self):
         """初始化全局AI代理"""
@@ -74,6 +76,10 @@ class TravelPlannerServer:
             logger.info("👤 咨询专家：负责收集自驾游需求")
             logger.info(list_agents(self.global_agents['experts']))
 
+            # 设置agent的WebSocket回调
+            self.setup_agent_callbacks()
+            logger.info("📡 WebSocket回调已设置完成")
+
             return True
         except Exception as e:
             logger.error(f"❌ 初始化失败: {e}")
@@ -101,6 +107,11 @@ class TravelPlannerServer:
         self.connected_clients.add(websocket)
         self.initialize_client_session(session_id)
 
+        # 设置当前活跃的WebSocket连接
+        self.current_websocket = websocket
+        # 清理之前的消息缓存，确保新连接的干净状态
+        self.message_cache.clear()
+
         logger.info(f"🔌 WebSocket客户端已连接: {websocket.remote_address}")
 
         try:
@@ -125,6 +136,11 @@ class TravelPlannerServer:
             self.connected_clients.discard(websocket)
             if session_id in self.client_sessions:
                 del self.client_sessions[session_id]
+            # 清除当前WebSocket连接
+            if self.current_websocket == websocket:
+                self.current_websocket = None
+            # 清理消息缓存
+            self.message_cache.clear()
 
     async def send_welcome_message(self, websocket, session_id: str):
         """发送欢迎消息"""
@@ -206,6 +222,7 @@ class TravelPlannerServer:
         try:
             if session['state'] == 'consultation' and not session['consultation_complete']:
                 # 咨询阶段
+                await self.send_progress_update(websocket, 'consultation', '💭 咨询专家正在分析您的需求...')
                 response = await self.process_consultation_phase(content, session_id)
 
                 # 检查咨询是否完成
@@ -226,7 +243,7 @@ class TravelPlannerServer:
                         'content': '✅ 自驾游需求收集完成，开始制定专属方案...'
                     })
 
-                    planning_response = await self.start_expert_collaboration(session_id)
+                    planning_response = await self.start_expert_collaboration(session_id, websocket)
                     await self.send_message(websocket, {
                         'type': 'assistant_message',
                         'content': planning_response,
@@ -243,6 +260,7 @@ class TravelPlannerServer:
 
             elif session['state'] == 'chatting':
                 # 后续对话阶段
+                await self.send_progress_update(websocket, 'followup', '🤔 分析您的补充问题...')
                 response = await self.process_followup_question(content, session_id)
                 await self.send_message(websocket, {
                     'type': 'assistant_message',
@@ -265,25 +283,21 @@ class TravelPlannerServer:
 
     async def process_consultation_phase(self, content: str, session_id: str) -> str:
         """处理咨询阶段"""
-        try:
-            consultation_expert = self.global_agents['consultation_expert']
-            msg = Msg(name="用户", content=content, role="user")
-            response = await consultation_expert(msg)
+        consultation_expert = self.global_agents['consultation_expert']
+        msg = Msg(name="用户", content=content, role="user")
+        response = await consultation_expert(msg)
 
-            # 记录对话历史
-            session = self.client_sessions[session_id]
-            session['conversation_history'].append({
-                'role': 'assistant',
-                'content': response.content,
-                'timestamp': asyncio.get_event_loop().time()
-            })
+        # 记录对话历史
+        session = self.client_sessions[session_id]
+        session['conversation_history'].append({
+            'role': 'assistant',
+            'content': response.content,
+            'timestamp': asyncio.get_event_loop().time()
+        })
 
-            return response.content
-        except Exception as e:
-            logger.error(f"咨询阶段处理错误: {e}")
-            return f"处理咨询时出错: {str(e)}"
+        return response.content
 
-    async def start_expert_collaboration(self, session_id: str) -> str:
+    async def start_expert_collaboration(self, session_id: str, websocket) -> str:
         """启动专家团队协作"""
         try:
             session = self.client_sessions[session_id]
@@ -292,11 +306,15 @@ class TravelPlannerServer:
             coordinator = self.global_agents['coordinator']
             experts = self.global_agents['experts']
 
+            # 发送协作开始通知
+            await self.send_progress_update(websocket, 'collaboration_start', '🤖 专家团队开始协作...')
+
             # 使用MsgHub进行多Agent协作
             expert_list = list(experts.values())
             async with MsgHub(participants=expert_list + [coordinator]):
 
                 # 1. 广播用户需求给所有专家
+                await self.send_progress_update(websocket, 'broadcasting', '📢 向专家团队广播用户需求...')
                 requirements_broadcast = Msg(
                     name="咨询专家",
                     content=f"""🚗 **自驾游需求广播**
@@ -323,8 +341,10 @@ class TravelPlannerServer:
                     broadcast_tasks.append(task)
 
                 await asyncio.gather(*broadcast_tasks, return_exceptions=True)
+                await self.send_progress_update(websocket, 'broadcast_complete', '✅ 需求广播完成，专家开始分析...')
 
                 # 2. 协调员分析和任务分配
+                await self.send_progress_update(websocket, 'coordination', '🧠 协调员正在分析需求并分配任务...')
                 analysis_prompt = f"""用户的完整自驾游需求如下：
 
 {user_requirements}
@@ -443,6 +463,7 @@ class TravelPlannerServer:
                     Msg(name="system", content=integration_prompt, role="system")
                 )
 
+                await self.send_progress_update(websocket, 'collaboration_complete', '🎉 专家协作完成，方案已生成！')
                 return final_plan.content
 
         except Exception as e:
@@ -499,6 +520,72 @@ class TravelPlannerServer:
             'type': 'error',
             'content': error_message
         })
+
+    async def send_expert_stream(self, websocket, expert_name: str, message: dict, phase: str = 'working'):
+        """发送专家流式输出，支持基于ID的消息更新"""
+        if not message or 'id' not in message:
+            return
+
+        message_id = message['id']
+
+        # 检查是否为消息更新
+        if message_id in self.message_cache:
+            # 更新现有消息的内容
+            cached_message = self.message_cache[message_id]
+
+            # 合并或更新content
+            if 'content' in message:
+                cached_message['content'] = message['content']
+
+            # 更新时间戳
+            cached_message['timestamp'] = message.get('timestamp', asyncio.get_event_loop().time())
+
+            # 发送更新后的消息
+            await self.send_message(websocket, cached_message)
+        else:
+            # 新消息，缓存并发送
+            self.message_cache[message_id] = message.copy()
+            await self.send_message(websocket, message)
+
+    async def send_progress_update(self, websocket, phase: str, message: str, agent_name: str = None):
+        """发送进度更新消息"""
+        update_data = {
+            'type': 'progress_update',
+            'phase': phase,
+            'content': message,
+            'timestamp': asyncio.get_event_loop().time()
+        }
+        if agent_name:
+            update_data['agent_name'] = agent_name
+
+        await self.send_message(websocket, update_data)
+
+    async def agent_output_callback(self, agent_name: str, message: dict):
+        """Agent输出回调函数，将agent的输出发送到WebSocket"""
+        if self.current_websocket:
+            # message已经是正确的格式，直接发送
+            await self.send_expert_stream(self.current_websocket, agent_name, message, 'output')
+
+    def setup_agent_callbacks(self):
+        """为所有agent设置WebSocket回调"""
+        if not self.global_agents:
+            return
+
+        # 设置协调员的回调
+        coordinator = self.global_agents.get('coordinator')
+        if coordinator and hasattr(coordinator, 'set_websocket_callback'):
+            coordinator.set_websocket_callback(self.agent_output_callback)
+
+        # 设置咨询专家的回调
+        consultation_expert = self.global_agents.get('consultation_expert')
+        if consultation_expert and hasattr(consultation_expert, 'set_websocket_callback'):
+            consultation_expert.set_websocket_callback(self.agent_output_callback)
+
+        # 设置所有专家的回调
+        experts = self.global_agents.get('experts', {})
+        for expert_name, expert in experts.items():
+            if hasattr(expert, 'set_websocket_callback'):
+                expert.set_websocket_callback(self.agent_output_callback)
 
     async def start_server(self):
         """启动WebSocket服务器"""

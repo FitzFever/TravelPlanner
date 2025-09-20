@@ -13,6 +13,7 @@ class TravelAssistant {
         this.config = {}; // 应用配置
         this.websocket = null; // WebSocket连接
         this.isConnected = false; // 连接状态
+        this.messageIdMap = new Map(); // 消息ID映射，用于更新现有消息
         this.init();
     }
 
@@ -46,6 +47,8 @@ class TravelAssistant {
                 this.isConnected = true;
                 this.updateConnectionStatus();
                 this.addChatMessage('已连接到智能助手服务', 'assistant');
+                // 清理之前的消息ID映射，开始新的会话
+                this.messageIdMap.clear();
             };
 
             this.websocket.onmessage = (event) => {
@@ -87,15 +90,30 @@ class TravelAssistant {
     handleWebSocketMessage(data) {
         console.log('收到WebSocket消息:', data);
 
+        // 处理带ID的消息（来自Agent的流式输出）
+        if (data.id) {
+            this.handleAgentMessage(data);
+            return;
+        }
+
+        // 处理传统的系统消息类型
         switch (data.type) {
+            case 'assistant_message':
             case 'assistant_response':
                 this.addChatMessage(data.content, 'assistant');
                 break;
+            case 'user_message':
+                // 用户消息已经在发送时显示，这里不重复显示
+                break;
+            case 'system':
             case 'system_message':
                 this.addChatMessage(data.content, 'assistant');
                 break;
             case 'error':
                 this.addChatMessage(`错误: ${data.content}`, 'assistant');
+                break;
+            case 'progress_update':
+                this.addChatMessage(data.content, 'assistant');
                 break;
             default:
                 console.log('未知消息类型:', data.type);
@@ -357,10 +375,15 @@ class TravelAssistant {
         }
     }
 
-    addChatMessage(text, sender = 'assistant') {
+    addChatMessage(text, sender = 'assistant', messageId = null) {
         const messagesContainer = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
+
+        // 如果有messageId，添加到DOM元素用于后续更新
+        if (messageId) {
+            messageDiv.setAttribute('data-message-id', messageId);
+        }
 
         const currentTime = new Date().toLocaleTimeString('zh-CN', {
             hour: '2-digit',
@@ -379,7 +402,256 @@ class TravelAssistant {
 
         messagesContainer.appendChild(messageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // 如果有messageId，将DOM元素映射存储
+        if (messageId) {
+            this.messageIdMap.set(messageId, messageDiv);
+        }
     }
+
+    // 处理Agent消息（带ID的流式消息）
+    handleAgentMessage(data) {
+        const messageId = data.id;
+        const agentName = data.name || 'Agent';
+
+        console.log(`处理Agent消息 ID: ${messageId}, 来自: ${agentName}`);
+
+        // 提取和格式化消息内容
+        const formattedContent = this.formatAgentContent(data.content, agentName);
+
+        // 检查是否已存在相同ID的消息
+        if (this.messageIdMap.has(messageId)) {
+            // 更新现有消息
+            console.log(`更新现有消息 ID: ${messageId}`);
+            this.updateChatMessageContent(messageId, formattedContent, data.timestamp);
+        } else {
+            // 创建新消息
+            console.log(`创建新消息 ID: ${messageId}`);
+            this.addChatMessageWithContent(formattedContent, 'assistant', messageId);
+        }
+    }
+
+    // 格式化Agent消息内容，处理不同类型的content
+    formatAgentContent(content, agentName) {
+        if (!content || !Array.isArray(content)) {
+            return typeof content === 'string' ? content : '';
+        }
+
+        let formattedParts = [];
+
+        content.forEach(item => {
+            switch (item.type) {
+                case 'text':
+                    if (item.text && item.text.trim()) {
+                        formattedParts.push({
+                            type: 'text',
+                            content: item.text
+                        });
+                    }
+                    break;
+
+                case 'tool_use':
+                    formattedParts.push({
+                        type: 'tool_use',
+                        content: `🔧 正在调用工具: ${item.name}`,
+                        details: {
+                            name: item.name,
+                            id: item.id,
+                            input: item.input
+                        }
+                    });
+                    break;
+
+                case 'tool_result':
+                    // 提取工具结果的文本内容
+                    let resultText = '';
+                    if (item.output && Array.isArray(item.output)) {
+                        resultText = item.output
+                            .filter(output => output.type === 'text')
+                            .map(output => output.text)
+                            .join('');
+                    }
+
+                    formattedParts.push({
+                        type: 'tool_result',
+                        content: `✅ 工具调用完成: ${item.name}`,
+                        details: {
+                            name: item.name,
+                            id: item.id,
+                            resultText: resultText.length > 200 ? resultText.substring(0, 200) + '...' : resultText,
+                            fullResult: resultText
+                        }
+                    });
+                    break;
+
+                default:
+                    console.log('未知内容类型:', item.type);
+            }
+        });
+
+        return formattedParts;
+    }
+
+    // 添加带格式化内容的聊天消息
+    addChatMessageWithContent(formattedContent, sender = 'assistant', messageId = null) {
+        const messagesContainer = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+
+        // 如果有messageId，添加到DOM元素用于后续更新
+        if (messageId) {
+            messageDiv.setAttribute('data-message-id', messageId);
+        }
+
+        const currentTime = new Date().toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // 构建消息内容HTML
+        const messageContentHtml = this.buildMessageContentHtml(formattedContent);
+
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <div class="avatar-icon">${sender === 'user' ? '👤' : '🤖'}</div>
+            </div>
+            <div class="message-content">
+                <div class="message-text">${messageContentHtml}</div>
+                <div class="message-time">${currentTime}</div>
+            </div>
+        `;
+
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // 如果有messageId，将DOM元素映射存储
+        if (messageId) {
+            this.messageIdMap.set(messageId, messageDiv);
+        }
+
+        // 设置工具调用的展开/折叠事件
+        this.setupToolToggleEvents(messageDiv);
+    }
+
+    // 构建消息内容HTML
+    buildMessageContentHtml(formattedContent) {
+        if (typeof formattedContent === 'string') {
+            return formattedContent;
+        }
+
+        if (!Array.isArray(formattedContent)) {
+            return '';
+        }
+
+        let html = '';
+        formattedContent.forEach((part, index) => {
+            switch (part.type) {
+                case 'text':
+                    html += `<div class="text-content">${part.content}</div>`;
+                    break;
+
+                case 'tool_use':
+                    html += `
+                        <div class="tool-call tool-use" data-tool-id="${part.details.id}">
+                            <div class="tool-header" onclick="toggleToolDetails(this)">
+                                <span class="tool-icon">🔧</span>
+                                <span class="tool-summary">${part.content}</span>
+                                <span class="tool-toggle">▼</span>
+                            </div>
+                            <div class="tool-details" style="display: none;">
+                                <div class="tool-detail-item">
+                                    <strong>工具名称:</strong> ${part.details.name}
+                                </div>
+                                <div class="tool-detail-item">
+                                    <strong>调用ID:</strong> ${part.details.id}
+                                </div>
+                                <div class="tool-detail-item">
+                                    <strong>输入参数:</strong>
+                                    <pre class="tool-input">${JSON.stringify(part.details.input, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'tool_result':
+                    html += `
+                        <div class="tool-call tool-result" data-tool-id="${part.details.id}">
+                            <div class="tool-header" onclick="toggleToolDetails(this)">
+                                <span class="tool-icon">✅</span>
+                                <span class="tool-summary">${part.content}</span>
+                                <span class="tool-toggle">▼</span>
+                            </div>
+                            <div class="tool-details" style="display: none;">
+                                <div class="tool-detail-item">
+                                    <strong>工具名称:</strong> ${part.details.name}
+                                </div>
+                                <div class="tool-detail-item">
+                                    <strong>结果ID:</strong> ${part.details.id}
+                                </div>
+                                <div class="tool-detail-item">
+                                    <strong>结果预览:</strong>
+                                    <div class="tool-result-preview">${part.details.resultText}</div>
+                                </div>
+                                ${part.details.fullResult.length > 200 ? `
+                                    <div class="tool-detail-item">
+                                        <button class="tool-expand-btn" onclick="showFullResult(this)"
+                                                data-full-result="${encodeURIComponent(part.details.fullResult)}">
+                                            查看完整结果
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+        });
+
+        return html;
+    }
+
+    // 更新现有消息的格式化内容
+    updateChatMessageContent(messageId, formattedContent, timestamp = null) {
+        const messageElement = this.messageIdMap.get(messageId);
+        if (!messageElement) {
+            console.warn(`未找到ID为 ${messageId} 的消息元素`);
+            return;
+        }
+
+        // 更新消息文本内容
+        const messageTextElement = messageElement.querySelector('.message-text');
+        if (messageTextElement) {
+            const newContentHtml = this.buildMessageContentHtml(formattedContent);
+            messageTextElement.innerHTML = newContentHtml;
+        }
+
+        // 更新时间戳（如果提供）
+        if (timestamp) {
+            const messageTimeElement = messageElement.querySelector('.message-time');
+            if (messageTimeElement) {
+                const time = new Date(timestamp).toLocaleTimeString('zh-CN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                messageTimeElement.textContent = time;
+            }
+        }
+
+        // 重新设置工具调用的展开/折叠事件
+        this.setupToolToggleEvents(messageElement);
+
+        // 滚动到最新位置
+        const messagesContainer = document.getElementById('chat-messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // 设置工具调用的展开/折叠事件
+    setupToolToggleEvents(messageElement) {
+        // 这个方法为工具调用设置事件监听器
+        // 实际的切换逻辑通过全局函数实现，因为HTML onclick需要全局函数
+    }
+
 
     handleAIResponse(userMessage) {
         const responses = {
@@ -1263,6 +1535,8 @@ class TravelAssistant {
             this.websocket.close(1000, '页面关闭');
             this.websocket = null;
         }
+        // 清理消息ID映射
+        this.messageIdMap.clear();
     }
 
     createDayIndicators() {
@@ -1455,6 +1729,92 @@ class TravelAssistant {
         };
         return icons[type] || '📍';
     }
+}
+
+// 全局函数：切换工具调用详情的显示/隐藏
+function toggleToolDetails(headerElement) {
+    const toolCall = headerElement.parentElement;
+    const details = toolCall.querySelector('.tool-details');
+    const toggle = headerElement.querySelector('.tool-toggle');
+
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        details.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+// 全局函数：显示完整的工具结果
+function showFullResult(buttonElement) {
+    const fullResult = decodeURIComponent(buttonElement.getAttribute('data-full-result'));
+
+    // 创建模态框显示完整结果
+    const modal = document.createElement('div');
+    modal.className = 'tool-result-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 80%;
+        max-height: 80%;
+        overflow: auto;
+        position: relative;
+    `;
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '✕';
+    closeButton.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--text-primary);
+    `;
+    closeButton.onclick = () => modal.remove();
+
+    const resultText = document.createElement('pre');
+    resultText.style.cssText = `
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        margin: 0;
+        padding-top: 30px;
+    `;
+    resultText.textContent = fullResult;
+
+    modalContent.appendChild(closeButton);
+    modalContent.appendChild(resultText);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 点击模态框外部关闭
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    };
 }
 
 // 初始化应用
