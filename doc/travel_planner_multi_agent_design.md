@@ -8,150 +8,189 @@
 
 ### 1.1 设计理念
 
-- **专业化分工**: 每个agent专注于特定领域的任务
-- **协作式规划**: 多个agent协同工作，信息共享
-- **动态优化**: 基于实时信息动态调整规划方案
-- **用户中心**: 以用户需求和偏好为核心驱动
+- **自组织协作**: 专家基于消息内容自主决定工作时机，无需预设流程
+- **消息驱动**: 通过 MsgHub 广播机制，让信息在专家间自然流动
+- **灵活适应**: 根据用户需求动态组建专家团队，不同场景不同配置
+- **并行高效**: 充分利用异步并行能力，多个专家同时工作
+- **简单透明**: 遵循 KISS 原则，避免过度设计和人为约束
 
 ## 2. 系统架构
 
-### 2.1 核心组件架构
+### 2.1 极简核心架构
 
 ```
-TravelPlannerAgent (主规划器)
-├── TravelNotebook (旅行规划笔记本)
-├── RouteManager (路线管理器) 
-├── SpecialistManager (专家管理器)
-├── RealTimeMonitor (实时监听器) ← 新增
-├── DynamicReplanner (动态重规划器) ← 新增
-└── SpecialistPool (专家池)
-    ├── RouteOptimizationAgent (路线优化专家)
-    ├── POIResearchAgent (景点研究专家)
-    ├── AccommodationAgent (住宿专家)
-    ├── BudgetAnalysisAgent (预算分析专家)
-    └── LocalExpertAgent (当地专家)
+用户需求
+    ↓
+TravelPlannerAgent (协调器)
+    ↓
+MsgHub (消息中心)
+    ↓
+[专家池 - 自组织协作]
+├── POIResearchAgent (景点研究专家)
+├── RouteOptimizationAgent (路线优化专家)  
+├── AccommodationAgent (住宿专家)
+├── BudgetAnalysisAgent (预算分析专家)
+└── LocalExpertAgent (当地专家)
+    ↓
+协调器整合 → 最终路书
 ```
+
+**设计原则：**
+- 只保留最核心的组件：协调器、MsgHub、专家池
+- 专家通过消息自主协作，无需额外管理层
+- 简单、透明、高效
 
 ### 2.2 组件详细说明
 
-#### TravelPlannerAgent (主规划器)
-继承自Meta-Planner架构，负责：
-- 用户需求分析和任务分解
-- 专家agent的动态创建和管理
-- 子任务分配和执行协调
-- 结果整合和最终路书生成
+#### TravelPlannerAgent (协调器)
+极简设计的协调者，负责：
+- 理解用户需求
+- 创建并连接专家团队
+- 收集专家成果
+- 整合生成最终路书
 
-#### TravelNotebook (旅行规划笔记本)
-存储和管理规划过程中的所有信息：
-- 用户需求和偏好
-- 目的地分析结果
-- 各专家的研究成果
-- 路线优化方案
-- 预算分析报告
+**职责边界：**
+- ✅ 只做协调和整合工作
+- ✅ 拥有存储管理工具（保存路书）
+- ❌ 不进行任何搜索和数据收集
+- ❌ 不重复专家的专业工作
 
-### 2.3 专家Agent通信协调架构
+### 2.3 自适应信息流转架构
 
 ```
-                    TravelPlannerAgent (主规划器)
-                           │
-                           │ 任务分配与结果收集
-                           ▼
-                    TravelNotebook (共享数据中心)
-                          ╱│╲
-                         ╱ │ ╲
-                        ╱  │  ╲
-                       ▼   ▼   ▼
-            POIResearchAgent │ AccommodationAgent
-            (景点研究专家)    │  (住宿专家)
-                      ╲     │     ╱
-                       ╲    ▼    ╱
-                        RouteOptimizationAgent
-                           (路线优化专家)
-                              │
-                              ▼
-                        LocalExpertAgent ←→ BudgetAnalysisAgent
-                         (当地专家)        (预算分析专家)
-                              │                │
-                              └────────────────┘
-                                       │
-                                       ▼
-                                TravelPlannerAgent
+用户需求
+    ↓
+TravelPlannerAgent (协调器)
+    ↓ 理解需求，创建专家池
+    
+[专家池 - 基于依赖自组织]
+┌─────────────────────────────┐
+│ • POI专家：搜索景点信息      │
+│ • 当地专家：提供本地资讯     │ → 信息自然流动
+│ • 路线专家：监听POI信息      │ → 按需响应
+│ • 住宿专家：监听路线信息     │ → 并行处理
+│ • 预算专家：实时汇总费用     │ → 动态调整
+└─────────────────────────────┘
+    ↓ MsgHub 消息广播机制
+    
+协调员整合 → 最终路书
 ```
 
-**双向协作机制:**
-- 所有专家通过 **TravelNotebook** 进行信息共享和双向通信
-- **POIResearchAgent** ↔ **RouteOptimizationAgent**: 景点信息与路线反馈
-- **RouteOptimizationAgent** ↔ **AccommodationAgent**: 路线与住宿位置互相优化
-- **LocalExpertAgent** 为所有专家提供当地信息支持
-- **BudgetAnalysisAgent** 汇总所有专家的成本信息
-- 支持迭代优化：专家可根据其他专家的反馈调整自己的方案
+**核心特点：**
+- 无预设阶段，专家根据消息内容自主决定何时工作
+- 支持并行处理，多个专家可同时工作
+- 依赖关系通过消息传递自然形成
+- 灵活适应不同类型的旅行规划需求
 
-### 2.4 专家Agent信息广播详图
+### 2.3.1 角色职责边界原则
 
+**协调器（TravelPlannerAgent）：**
+- ✅ 需求分析、任务分解、专家调度
+- ✅ 信息整合、结果汇总、格式化输出  
+- ✅ 管理工作流程和执行顺序
+- ❌ **不进行具体搜索和数据收集**
+- ❌ **不重复专家已完成的工作**
+- ❌ **不拥有搜索类工具（如tavily_search）**
+
+**专家Agents：**
+- ✅ 在各自领域内进行深度研究
+- ✅ 使用专业工具进行数据收集和分析
+- ✅ 提供具体、可操作的专业建议
+- ✅ 基于其他专家的信息调整方案
+- ❌ 不越界到其他专家的领域
+- ❌ 不进行最终的整合工作
+
+### 2.4 精简的专家间信息广播
+
+#### 2.4.1 信息广播矩阵
+
+| 发送方 | 接收方 | 关键信息内容 | 广播时机 | 信息大小 |
+|--------|--------|--------------|----------|----------|
+| POI专家 | 路线专家 | 景点位置坐标、游览时长 | 完成后立即 | <1KB |
+| POI专家 | 预算专家 | 门票费用总计 | 完成后立即 | <100B |
+| 路线专家 | 住宿专家 | 每日终点位置 | 完成后立即 | <500B |
+| 路线专家 | 预算专家 | 交通费用估算 | 完成后立即 | <100B |
+| 住宿专家 | 预算专家 | 住宿费用总计 | 完成后立即 | <100B |
+| 预算专家 | 路线专家 | 费用约束、削减建议 | **仅超支时** | <500B |
+| 预算专家 | 住宿专家 | 费用约束、降级建议 | **仅超支时** | <500B |
+| 当地专家 | POI专家 | 天气预警、特殊事件 | 开始时 | <1KB |
+| 当地专家 | 路线专家 | 交通管制、拥堵信息 | 开始时 | <1KB |
+
+#### 2.4.2 专家间必要信息广播内容
+
+```python
+# 只广播决策相关的关键数据，避免冗长内容
+
+POI专家 → {
+    "路线专家": {
+        "selected_pois": [
+            {"name": "景点A", "location": (lat, lng), "duration_hours": 2},
+            {"name": "景点B", "location": (lat, lng), "duration_hours": 3}
+        ],
+        "total_time_needed": 8  # 小时
+    },
+    "预算专家": {
+        "total_ticket_cost": 500  # 门票总费用
+    }
+}
+
+路线专家 → {
+    "住宿专家": {
+        "daily_endpoints": [
+            {"day": 1, "final_location": (lat, lng), "area": "市中心"},
+            {"day": 2, "final_location": (lat, lng), "area": "景区附近"}
+        ]
+    },
+    "预算专家": {
+        "transport_cost": 300,  # 交通费用
+        "total_distance": 120   # 公里
+    }
+}
+
+住宿专家 → {
+    "预算专家": {
+        "accommodation_cost": 750  # 住宿总费用
+    }
+}
+
+预算专家 → {  # 条件广播：仅在超预算时
+    "路线专家": {
+        "budget_status": "over",
+        "over_amount": 500,
+        "max_transport_budget": 200,
+        "suggestion": "减少1-2个收费景点或选择公共交通"
+    },
+    "住宿专家": {
+        "budget_status": "over", 
+        "max_accommodation_budget": 600,
+        "suggestion": "第2天可选择经济型住宿"
+    }
+}
+
+当地专家 → {
+    "POI专家": {
+        "weather_alert": "第2天有雨，室外景点不适合",
+        "special_events": "第3天有节庆，某些景点免费"
+    },
+    "路线专家": {
+        "traffic_alert": "周末市中心堵车严重",
+        "road_closure": "XX路段施工，需绕行"
+    }
+}
 ```
-POIResearchAgent (景点研究专家)
-├─ 广播给 RouteOptimizationAgent: 
-│  • 景点GPS坐标
-│  • 开放时间和闭馆时间
-│  • 建议游览时长
-│  • 停车场信息
-├─ 广播给 BudgetAnalysisAgent:
-│  • 门票价格明细
-│  • 停车费用
-├─ 广播给 LocalExpertAgent:
-│  • 景点文化背景查询需求
-└─ 广播给 TravelNotebook: 完整景点数据库
 
-RouteOptimizationAgent (路线优化专家)
-├─ 广播给 AccommodationAgent:
-│  • 每日最后一个景点位置
-│  • 建议住宿区域范围
-│  • 次日首个景点位置
-├─ 广播给 BudgetAnalysisAgent:
-│  • 自驾路线总里程
-│  • 预估油费和过路费
-│  • 停车费用汇总
-└─ 广播给 TravelNotebook: 优化路线方案
+#### 2.4.3 不需要广播的信息
 
-AccommodationAgent (住宿专家)
-├─ 广播给 RouteOptimizationAgent:
-│  • 确定住宿地点坐标
-│  • 酒店停车设施信息
-├─ 广播给 BudgetAnalysisAgent:
-│  • 住宿费用明细
-│  • 额外服务费用
-└─ 广播给 TravelNotebook: 住宿推荐方案
+以下信息过于冗长或对其他专家决策无直接影响，不应广播：
 
-LocalExpertAgent (当地专家)
-├─ 广播给 POIResearchAgent:
-│  • 当地文化禁忌和注意事项
-│  • 最佳游览时间建议
-├─ 广播给 RouteOptimizationAgent:
-│  • 当地交通规则和限行信息
-│  • 路况和施工信息
-│  • 停车规定和收费标准
-├─ 广播给 AccommodationAgent:
-│  • 当地住宿习惯和推荐区域
-│  • 安全区域建议
-├─ 广播给 BudgetAnalysisAgent:
-│  • 当地消费水平指导
-│  • 小费和服务费习惯
-└─ 广播给 TravelNotebook: 当地实用信息集合
+- ❌ 景点的详细历史文化介绍（几千字的描述）
+- ❌ 完整的用户评价内容（大量文本）
+- ❌ 详细的导航指令（turn-by-turn directions）
+- ❌ 酒店的所有设施列表
+- ❌ 餐厅的完整菜单
+- ❌ 详细的天气预报（每小时数据）
 
-BudgetAnalysisAgent (预算分析专家)
-├─ 接收所有专家的成本信息
-├─ 汇总分析后广播给 TravelPlannerAgent:
-│  • 总预算明细表
-│  • 不同档次方案对比
-│  • 省钱建议和优化方案
-└─ 广播给 TravelNotebook: 完整预算分析报告
-
-TravelNotebook (数据广播中心)
-└─ 向所有专家实时广播:
-   • 用户需求更新
-   • 其他专家的最新研究成果
-   • 任务进度和状态变更
-```
+**核心原则：只广播影响其他专家决策的关键数据点，保持信息精简。**
 
 ## 3. 数据模型设计
 
@@ -332,71 +371,65 @@ class TravelNotebook(BaseModel):
 
 ## 5. 工作流程设计
 
-### 5.1 主要工作流程
+### 5.1 自适应工作流程
 
 ```python
 async def plan_travel_itinerary(user_request: str):
-    """旅行规划主流程"""
+    """旅行规划主流程 - 基于消息驱动的自组织协作"""
     
-    # 阶段1: 需求分析和任务分解
-    await decompose_travel_planning_task(
-        user_request=user_request,
-        destination_analysis="分析目的地特点、最佳旅行时间、文化背景",
-        detailed_plan="制定详细的任务分解计划",
-        subtasks=[
-            {
-                "name": "目的地和景点研究",
-                "description": "收集目的地信息，筛选推荐景点",
-                "expected_output": "景点清单、开放时间、门票信息",
-                "assigned_agent": "POIResearchAgent"
-            },
-            {
-                "name": "住宿方案制定",
-                "description": "根据预算和位置要求推荐住宿",
-                "expected_output": "住宿推荐列表、价格对比、预订建议",
-                "assigned_agent": "AccommodationAgent"
-            },
-            {
-                "name": "交通规划",
-                "description": "制定大交通和当地交通方案",
-                "expected_output": "交通时刻表、票价信息、预订建议",
-                "assigned_agent": "TransportationAgent"
-            },
-            {
-                "name": "路线优化",
-                "description": "优化每日游览路线和时间安排",
-                "expected_output": "最优路线方案、时间分配、备选路线",
-                "assigned_agent": "RouteOptimizationAgent"
-            },
-            {
-                "name": "预算分析",
-                "description": "制定详细预算方案和成本控制",
-                "expected_output": "预算明细表、省钱建议、不同档次方案",
-                "assigned_agent": "BudgetAnalysisAgent"
-            },
-            {
-                "name": "当地信息整理",
-                "description": "收集当地文化、安全、实用信息",
-                "expected_output": "文化指南、安全提醒、实用贴士",
-                "assigned_agent": "LocalExpertAgent"
-            }
-        ]
-    )
+    # 创建协调员和专家池
+    coordinator = create_coordinator()
+    experts = await coordinator.create_expert_pool(user_request)
     
-    # 阶段2: 动态创建专家agents
-    await create_specialist_agents()
+    # 使用MsgHub实现自然的消息流转
+    async with MsgHub(participants=experts) as hub:
+        # 初始消息：用户需求
+        initial_msg = Msg(
+            name="user",
+            content=user_request
+        )
+        
+        # 广播需求，专家们根据内容自主响应
+        await hub.broadcast(initial_msg)
+        
+        # 专家们通过监听消息自动协作
+        # POI专家看到需求就开始搜索
+        # 路线专家监听POI信息自动规划
+        # 住宿专家基于路线信息推荐酒店
+        # 预算专家实时跟踪所有费用
+        
+        # 让消息自然流动，无需强制顺序
+        # 专家间的依赖通过消息内容自动解决
     
-    # 阶段3: 并行执行专家任务
-    await execute_parallel_research()
+    # 协调员收集并整合所有专家的成果
+    final_plan = await coordinator.collect_and_integrate(hub.get_messages())
     
-    # 阶段4: 结果整合和优化
-    await integrate_and_optimize_results()
+    # 保存最终方案
+    await save_travel_plan(final_plan)
     
-    # 阶段5: 生成最终路书文档
-    await generate_travel_guide_documents()
+    return final_plan
+
+def create_expert_pool(user_request: str) -> List[Agent]:
+    """根据需求动态创建专家池"""
+    experts = []
     
-    # 阶段6: 启动实时监听和动态调整 ← 新增
-    await start_real_time_monitoring_and_replanning()
+    # 分析需求，决定需要哪些专家
+    if "景点" in user_request or "玩" in user_request:
+        experts.append(POIExpert())
+    
+    if "住" in user_request or "酒店" in user_request:
+        experts.append(AccommodationExpert())
+    
+    if "预算" in user_request or "费用" in user_request:
+        experts.append(BudgetExpert())
+    
+    # 总是包含基础专家
+    experts.extend([
+        RouteExpert(),  # 监听POI信息
+        LocalExpert()   # 提供本地信息
+    ])
+    
+    return experts
 
 async def start_real_time_monitoring_and_replanning():
     """启动实时监听和动态重规划"""
@@ -427,13 +460,43 @@ async def start_real_time_monitoring_and_replanning():
         await asyncio.sleep(MONITORING_INTERVAL)
 ```
 
-### 5.2 并行执行策略
+### 5.2 专家自主响应机制
 
-系统支持多个专家agent并行工作，提高效率：
+```python
+class ExpertAgent(ReActAgent):
+    """具有自主响应能力的专家Agent"""
+    
+    def should_respond(self, msg: Msg) -> bool:
+        """判断是否应该响应此消息"""
+        # 每个专家根据消息内容决定是否工作
+        pass
+    
+    async def __call__(self, msg: Msg) -> Msg:
+        """处理消息"""
+        if not self.should_respond(msg):
+            return msg  # 不相关的消息直接传递
+        
+        # 执行专业工作
+        result = await self.process(msg)
+        
+        # 将结果广播给其他专家
+        return Msg(
+            name=self.name,
+            content=result,
+            metadata={"dependencies_resolved": True}
+        )
 
-1. **信息收集阶段**: POI研究、住宿、交通信息可并行收集
-2. **分析阶段**: 预算分析和当地信息可并行处理
-3. **优化阶段**: 路线优化基于前面收集的信息进行
+# 示例：路线专家监听POI信息
+class RouteExpert(ExpertAgent):
+    def should_respond(self, msg: Msg) -> bool:
+        return "selected_pois" in msg.content or \
+               msg.name == "poi_expert"
+```
+
+**优势：**
+- 无需显式编排，专家自动响应相关消息
+- 支持真正的并行处理
+- 灵活处理各种依赖关系
 
 ## 6. 特色功能设计
 
@@ -712,12 +775,75 @@ class SpecialistAgentFactory:
         return specialist_configs[agent_type](**config)
 ```
 
-### 8.3 工具集成策略
+### 8.3 工具分配原则
 
-每个专家agent配备专门的工具集：
-- 通用工具: 文件操作、网络请求、数据处理
-- 专用工具: 特定API、算法库、数据库访问
-- 外部服务: 地图服务、预订平台、信息查询
+#### 8.3.1 协调员专属工具（存储管理）
+
+**协调员工具集（严格限制）：**
+```python
+# 只分配给 TravelPlannerAgent (协调员)
+coordinator_tools = {
+    # 存储管理工具
+    "save_travel_plan",           # 保存文本格式路书
+    "save_structured_travel_plan", # 保存结构化路书（推荐）
+    "save_frontend_travel_plan",   # 保存前端兼容格式
+    "load_travel_plan",            # 加载已保存的路书
+    "list_travel_plans",           # 查看所有路书列表
+    "request_structured_output"    # 引导结构化输出
+}
+# ❌ 禁止：tavily_search, 小红书搜索等数据收集工具
+# ❌ 禁止：高德地图等专业分析工具
+```
+
+**协调员工具使用时机：**
+- 在整合完所有专家建议后保存最终方案
+- 用户请求查看或加载历史路书时
+- 需要将方案导出为特定格式时
+
+#### 8.3.2 专家专属工具（数据收集）
+
+**专家工具集（专业工具）：**
+```python
+expert_tools = {
+    "POI专家": {
+        "tavily_search",     # 搜索景点信息
+        "小红书搜索"         # 获取用户体验
+    },
+    "路线专家": {
+        "高德地图API"        # 路线规划、距离计算
+    },
+    "当地专家": {
+        "天气服务",          # 天气预报
+        "小红书搜索"         # 当地体验分享
+    },
+    "住宿专家": {
+        "tavily_search",     # 酒店信息搜索
+        "小红书搜索"         # 住宿评价
+    },
+    "预算专家": {
+        "tavily_search"      # 价格信息搜索
+    }
+}
+# ❌ 专家不应拥有任何存储管理工具
+# ❌ 专家不负责保存路书
+```
+
+#### 8.3.3 工具分配矩阵
+
+| Agent类型 | 数据收集工具 | 存储管理工具 | 原因 |
+|----------|-------------|-------------|------|
+| 协调员 | ❌ | ✅ | 负责整合和管理，不重复收集 |
+| POI专家 | ✅ | ❌ | 专注景点研究，不管理存储 |
+| 路线专家 | ✅ | ❌ | 专注路线优化，不管理存储 |
+| 住宿专家 | ✅ | ❌ | 专注住宿推荐，不管理存储 |
+| 预算专家 | ✅ | ❌ | 专注成本分析，不管理存储 |
+| 当地专家 | ✅ | ❌ | 专注当地信息，不管理存储 |
+
+**核心原则：**
+- ✅ **单一职责**：每个Agent只做一类事情
+- ✅ **工具专属**：搜索工具给专家，存储工具给协调员
+- ✅ **避免重复**：协调员不重复专家的搜索工作
+- ❌ **禁止混用**：协调员不能有搜索工具，专家不能有存储工具
 
 ## 9. 部署和扩展
 
@@ -740,14 +866,95 @@ class SpecialistAgentFactory:
 - 提升算法精度和效率
 - 集成更多数据源和服务
 
-## 10. 总结
+## 10. 设计反模式与最佳实践
 
-本设计方案充分利用了AgentScope Meta-Planner的分治思想和协作能力，将复杂的旅行规划任务分解为多个专业化的子任务，通过专家agent的协作完成。相比单一agent解决方案，该架构具有以下优势：
+### 10.1 常见反模式（避免）
 
-1. **专业性强**: 每个专家专注于特定领域，提供专业化服务
-2. **可扩展性好**: 易于添加新的专家类型和功能模块
-3. **容错能力强**: 单个专家的问题不会影响整体规划
-4. **效率更高**: 并行处理能力显著提升规划速度
-5. **用户体验佳**: 提供全面、个性化的旅行规划服务
+#### ❌ 角色混乱反模式
+```python
+# 错误：协调员越权进行具体搜索
+coordinator = ReActAgent(
+    toolkit=Toolkit([tavily_search, ...])  # 协调员不应有搜索工具！
+)
 
-该系统可作为智能旅行助手的核心引擎，为用户提供专业、全面、个性化的旅行规划服务。
+# 错误：协调员忽视专家工作，重新规划
+async def coordinator_integrate(expert_results):
+    # 忽略专家结果，自己重新搜索
+    new_search = await tavily_search(...)  # ❌ 重复工作
+```
+
+#### ❌ 过度复杂反模式
+```python
+# 错误：过度设计的协商机制
+class ComplexNegotiation:
+    def multi_round_bargaining():  # 过于复杂
+    def blackboard_system():       # 违背KISS原则
+    def contract_net_protocol():   # 不必要的复杂度
+```
+
+#### ❌ 信息泛滥反模式
+```python
+# 错误：广播所有信息
+poi_broadcast = {
+    "full_description": "5000字的景点介绍...",  # ❌ 太长
+    "all_reviews": ["100条用户评价..."],         # ❌ 不必要
+    "detailed_history": "详细历史背景..."        # ❌ 与决策无关
+}
+```
+
+### 10.2 最佳实践（推荐）
+
+#### ✅ 清晰的角色边界
+```python
+# 正确：协调员纯粹协调
+coordinator = ReActAgent(
+    toolkit=Toolkit([save_travel_plan, load_travel_plan])  # 只有管理工具
+)
+
+# 正确：专家专注专业领域
+poi_expert = ReActAgent(
+    toolkit=Toolkit([tavily_search, xiaohongshu_search])  # 专业搜索工具
+)
+```
+
+#### ✅ 自然的信息流
+```python
+# 正确：基于消息的自然流动
+async def natural_flow():
+    async with MsgHub(experts) as hub:
+        # 发送初始消息
+        await hub.broadcast(user_request)
+        
+        # 专家自主协作，无需控制流程
+        # 依赖关系通过消息内容解决
+        
+    return coordinator.integrate(hub.messages)
+```
+
+#### ✅ 精简的信息广播
+```python
+# 正确：只广播关键决策点
+poi_broadcast = {
+    "selected_pois": [(name, lat, lng, duration)],  # ✅ 精简
+    "total_cost": 500                               # ✅ 关键数据
+}
+```
+
+### 10.3 架构演进原则
+
+1. **从简单开始**：先实现单线流程，再考虑优化
+2. **按需迭代**：只在真正需要时才增加复杂度
+3. **保持透明**：消息流转路径应该清晰可追踪
+4. **专注核心**：每个Agent做好一件事
+
+## 11. 总结
+
+本设计方案基于AgentScope的核心理念，实现了真正的自组织Multi-Agent协作：
+
+1. **消息驱动**: 通过 MsgHub 让信息自然流动，无需预设流程
+2. **自主协作**: 专家根据消息内容自主响应，形成动态协作网络
+3. **灵活适应**: 根据任务需求动态组建团队，不同场景不同配置
+4. **并行高效**: 充分利用异步能力，多专家并行工作
+5. **简单透明**: 遵循 KISS 原则，避免过度设计
+
+**核心理念：让 Agent 基于消息自然协作，而不是强制编排流程。**

@@ -1,0 +1,393 @@
+{
+  "title": "哈尔滨-伊春5天4夜自驾游专属方案",
+  "created_time": "2025-09-20 16:54:28",
+  "structured_data": {
+    "destination": "哈尔滨-伊春",
+    "days": 5,
+    "travel_type": "自驾游",
+    "budget_level": "经济型",
+    "total_budget": 6800,
+    "group_size": 4,
+    "summary": "冬季小兴安岭森林体验自驾之旅，涵盖奇石景观、动物互动、温泉养生等多种体验",
+    "route_overview": {
+      "total_distance": "957公里",
+      "total_driving_time": "约13小时",
+      "main_routes": [
+        "G1111鹤哈高速",
+        "222国道",
+        "乌带公路"
+      ],
+      "transport_cost": 1200
+    },
+    "daily_itinerary": [
+      {
+        "day": 1,
+        "title": "哈尔滨 → 金山鹿苑",
+        "route": "哈尔滨中央大街 → G1111鹤哈高速 → 222国道 → 金山鹿苑",
+        "distance": "341km",
+        "driving_time": "3.5小时",
+        "departure_time": "08:00",
+        "arrival_time": "12:00",
+        "attractions": [
+          "金山鹿苑"
+        ],
+        "accommodation": "金山屯凯盛商务宾馆",
+        "accommodation_price": 234,
+        "highlights": [
+          "乌带公路绝美风景",
+          "与梅花鹿亲密接触",
+          "东北林区初体验"
+        ],
+        "notes": "85%高速路段，路况良好；绥化服务区中途休息加油"
+      },
+      {
+        "day": 2,
+        "title": "金山鹿苑 → 汤旺河",
+        "route": "金山鹿苑 → 222国道 → 汤旺河林海奇石景区",
+        "distance": "131km",
+        "driving_time": "1.8小时",
+        "departure_time": "09:00",
+        "arrival_time": "11:00",
+        "attractions": [
+          "金祖峰日出",
+          "汤旺河林海奇石景区"
+        ],
+        "accommodation": "汤旺河朴宿民宿",
+        "accommodation_price": 350,
+        "highlights": [
+          "金祖峰日出云海（5:30起床）",
+          "汤旺河5A景区奇石怪林",
+          "松鼠互动体验"
+        ],
+        "notes": "主要为222国道，山路较多，需谨慎驾驶；新青镇中途补给"
+      },
+      {
+        "day": 3,
+        "title": "汤旺河 → 五营 → 伊春",
+        "route": "汤旺河 → 五营国家森林公园 → 伊春市区",
+        "distance": "151km",
+        "driving_time": "2.5小时",
+        "departure_time": "09:00",
+        "arrival_time": "14:30",
+        "attractions": [
+          "五营国家森林公园"
+        ],
+        "accommodation": "伊春森氧假日酒店",
+        "accommodation_price": 250,
+        "highlights": [
+          "五营红松原始林",
+          "天然氧吧体验",
+          "伊春市区夜市"
+        ],
+        "notes": "山区公路，景色优美但弯道较多"
+      },
+      {
+        "day": 4,
+        "title": "伊春周边深度游",
+        "route": "伊春市区 → 上甘岭 → 茅兰沟 → 返回伊春",
+        "distance": "100km往返",
+        "driving_time": "2小时",
+        "departure_time": "09:00",
+        "arrival_time": "17:00",
+        "attractions": [
+          "上甘岭溪水国家森林公园",
+          "茅兰沟国家森林公园"
+        ],
+        "accommodation": "伊春森氧假日酒店",
+        "accommodation_price": 250,
+        "highlights": [
+          "森林公园徒步",
+          "原生态自然体验",
+          "茅兰沟冰瀑奇观"
+        ],
+        "notes": "短距离往返，路况较好"
+      },
+      {
+        "day": 5,
+        "title": "伊春 → 哈尔滨",
+        "route": "伊春 → G1111鹤哈高速 → 哈尔滨",
+        "distance": "334km",
+        "driving_time": "3.2小时",
+        "departure_time": "10:00",
+        "arrival_time": "14:00",
+        "attractions": [],
+        "accommodation": "",
+        "accommodation_price": 0,
+        "highlights": [
+          "当地特产采购",
+          "高速返程"
+        ],
+        "notes": "主要高速返程，路况优良"
+      }
+    ],
+    "attractions": [
+      {
+        "name": "汤旺河林海奇石景区",
+        "coordinates": [
+          47.7275,
+          129.5063
+        ],
+        "ticket_price": 95,
+        "visit_duration": "4小时",
+        "parking": "免费停车场",
+        "highlights": [
+          "5A景区",
+          "奇石怪林",
+          "松鼠互动",
+          "观光塔眺望"
+        ],
+        "rating": 5
+      },
+      {
+        "name": "五营国家森林公园",
+        "coordinates": [
+          48.1047,
+          129.2453
+        ],
+        "ticket_price": 85,
+        "visit_duration": "3小时",
+        "parking": "3元/次停车",
+        "highlights": [
+          "红松原始林",
+          "天然氧吧",
+          "森林徒步"
+        ],
+        "rating": 5
+      },
+      {
+        "name": "金山鹿苑",
+        "coordinates": [
+          47.4167,
+          128.8833
+        ],
+        "ticket_price": 45,
+        "visit_duration": "2小时",
+        "parking": "免费停车",
+        "highlights": [
+          "现实版疯狂动物城",
+          "梅花鹿互动",
+          "亲子体验"
+        ],
+        "rating": 4
+      },
+      {
+        "name": "茅兰沟国家森林公园",
+        "coordinates": [
+          49.2167,
+          130.0333
+        ],
+        "ticket_price": 65,
+        "visit_duration": "4小时",
+        "parking": "免费停车场",
+        "highlights": [
+          "冰瀑奇观",
+          "山涧幽谷",
+          "冬季特色"
+        ],
+        "rating": 4
+      },
+      {
+        "name": "上甘岭溪水国家森林公园",
+        "coordinates": [
+          47.9753,
+          128.8456
+        ],
+        "ticket_price": 0,
+        "visit_duration": "3小时",
+        "parking": "免费停车",
+        "highlights": [
+          "森林生态博物馆",
+          "清新空气",
+          "免费景点"
+        ],
+        "rating": 4
+      }
+    ],
+    "accommodations": [
+      {
+        "name": "金山屯凯盛商务宾馆",
+        "location": "金山屯区",
+        "price_per_night": 234,
+        "features": [
+          "智能家居",
+          "免费停车",
+          "干净整洁"
+        ],
+        "distance_to_attraction": "距离金山鹿苑15分钟车程",
+        "parking": "免费停车场"
+      },
+      {
+        "name": "汤旺河朴宿民宿",
+        "location": "汤旺县",
+        "price_per_night": 350,
+        "features": [
+          "两张1.8米大床",
+          "房间宽敞",
+          "老板热情"
+        ],
+        "distance_to_attraction": "距离汤旺河景区10分钟车程",
+        "parking": "免费院内停车"
+      },
+      {
+        "name": "伊春森氧假日酒店",
+        "location": "伊春市区",
+        "price_per_night": 250,
+        "features": [
+          "周边商场",
+          "美食街便利",
+          "标准化服务"
+        ],
+        "distance_to_attraction": "市中心，交通便利",
+        "parking": "独立停车场免费"
+      }
+    ],
+    "budget_breakdown": {
+      "transportation": {
+        "fuel": 620,
+        "tolls": 350,
+        "parking": 50,
+        "emergency": 180,
+        "total": 1200
+      },
+      "tickets": {
+        "total": 1040,
+        "details": [
+          {
+            "attraction": "汤旺河林海奇石",
+            "price": 380
+          },
+          {
+            "attraction": "五营国家森林公园",
+            "price": 340
+          },
+          {
+            "attraction": "金山鹿苑",
+            "price": 180
+          },
+          {
+            "attraction": "茅兰沟",
+            "price": 260
+          },
+          {
+            "attraction": "上甘岭溪水",
+            "price": 0
+          }
+        ]
+      },
+      "accommodation": {
+        "total": 1800,
+        "details": [
+          {
+            "night": 1,
+            "hotel": "金山屯凯盛商务宾馆",
+            "price": 468
+          },
+          {
+            "night": 2,
+            "hotel": "汤旺河朴宿民宿",
+            "price": 700
+          },
+          {
+            "night": 3,
+            "hotel": "伊春森氧假日酒店",
+            "price": 500
+          },
+          {
+            "night": 4,
+            "hotel": "伊春森氧假日酒店",
+            "price": 500
+          }
+        ]
+      },
+      "dining": {
+        "total": 1500,
+        "daily_budget": 300,
+        "recommended_restaurants": [
+          {
+            "name": "亓记隐厨",
+            "location": "汤旺河",
+            "avg_price": 60
+          },
+          {
+            "name": "尹香轩",
+            "location": "伊春市区",
+            "avg_price": 70
+          }
+        ]
+      },
+      "shopping": {
+        "total": 800,
+        "items": [
+          "蓝莓",
+          "木耳",
+          "山珍特产"
+        ]
+      },
+      "emergency": {
+        "total": 460,
+        "percentage": "7%预留"
+      }
+    },
+    "driving_tips": {
+      "road_conditions": [
+        "冬季路况：部分山路可能有冰雪，建议携带防滑链",
+        "222国道山区段：弯道多，冬季易结冰",
+        "汤旺河-五营段：森林公路，注意野生动物",
+        "高速路段：冬季能见度可能较低"
+      ],
+      "fuel_stations": "平均50-80公里一个加油站",
+      "rest_stops": [
+        "绥化服务区",
+        "新青镇"
+      ],
+      "best_driving_time": "上午9:00-11:00出发，下午14:00-16:00行驶",
+      "avoid_time": "7:30-8:30, 17:00-18:30（避开通勤高峰）"
+    },
+    "safety_reminders": [
+      "冬季装备：羽绒服、防滑鞋、手套必备",
+      "通讯保障：山区信号可能较弱，提前下载离线地图",
+      "应急物品：携带医药包、充电宝、干粮",
+      "天气关注：出发前查看天气预报，雾天慎行",
+      "车辆检查：出发前检查防冻液、轮胎、刹车系统"
+    ],
+    "local_cuisine": [
+      {
+        "name": "坑烤大公鸡",
+        "location": "汤旺河特色",
+        "price": "50-80元",
+        "description": "当地招牌美食"
+      },
+      {
+        "name": "东北炖菜",
+        "price": "分量足，2人点3菜足够",
+        "description": "地道东北口味"
+      },
+      {
+        "name": "野生蓝莓",
+        "description": "当地特产，现买现吃"
+      },
+      {
+        "name": "小鸡炖蘑菇",
+        "description": "各种野生菌料理"
+      }
+    ],
+    "money_saving_tips": [
+      "错峰出行：避开周末和节假日",
+      "团购优惠：景区门票和餐饮提前预订",
+      "当地采购：特产在市区购买比景区便宜30%",
+      "住宿选择：民宿性价比优于星级酒店",
+      "油费控制：合理规划路线，避免重复路段"
+    ],
+    "emergency_contacts": [
+      "道路救援：高速路段24小时道路救援",
+      "医疗急救：各市县均有医院覆盖",
+      "旅游投诉：当地旅游部门投诉热线"
+    ]
+  },
+  "metadata": {
+    "destination": "哈尔滨-伊春",
+    "days": 5,
+    "travel_type": "自驾游",
+    "budget_level": "经济型"
+  }
+}

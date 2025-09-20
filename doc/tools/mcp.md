@@ -36,7 +36,7 @@
     "main.py"
   ],
   "env": {
-    "XHS_COOKIE": "a1=1940627219618wm14yddam6g0hbnswnmmclc7daj430000142908; webId=ee0b066b0d22c21d1822fe73be3d20a6; gid=yj48KJWJKi6Dyj48KJWJySf0jKyYE6y4vff01V46Kk8xDSq8IMEI6W888y4Jj8Y8yiDqqjWi; abRequestId=ee0b066b0d22c21d1822fe73be3d20a6; web_session=0400698e5867e656d08d9dbbbc354bfd4a9550; x-user-id-creator.xiaohongshu.com=5f2c24ae00000000010080db; customerClientId=253070019720926; webBuild=4.81.0; xsecappid=xhs-pc-web; acw_tc=0a00df6217582831520252648e5aef76f4a9fb252e693872f8b54d30ccfcb8; websectiga=3fff3a6f9f07284b62c0f2ebf91a3b10193175c06e4f71492b60e056edcdebb2; sec_poison_id=756416ec-2730-486e-a55e-589e215d65db; loadts=1758283157647; unread={%22ub%22:%2268c508bb000000001c034681%22%2C%22ue%22:%2268c546bf000000001d0097d4%22%2C%22uc%22:25}"
+    "XHS_COOKIE": "abRequestId=6e12629e-86a3-59d3-9177-a908d77fdf1a; xsecappid=xhs-pc-web; a1=19744a844a5r6ncvxrpc6bzhhpeuam8a6068zw4eo30000782193; webId=af7afdd61d64eb3bce723fee54929418; gid=yjW08iidfiKWyjW440Y448E402FKIShCFUSKKdlDuxxUdYq8706Y0u888WYJyjq8KjySj8W8; webBuild=4.81.0; web_session=04006979827162156355bc2ff83a4bac04becb; acw_tc=0a4ae10f17583562845381940ef2d1982f904b71c4581f8e0cbb76ad6d5ee4; websectiga=10f9a40ba454a07755a08f27ef8194c53637eba4551cf9751c009d9afb564467; sec_poison_id=0bdc24b7-8009-4626-b792-ebda2cdd6281; unread={%22ub%22:%2268cd005c0000000013004b35%22%2C%22ue%22:%2268bedc45000000001b033c8c%22%2C%22uc%22:26}; loadts=1758357627361"
   },
   "name": "xhs-mcp",
   "baseUrl": "",

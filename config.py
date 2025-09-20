@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     base_url: str = "https://api.moonshot.cn/v1"
     
     # 模型选择: "claude" 或 "openai"
-    model_type: str = "claude"
+    model_type: str = "openai"
     
     # Claude 模型名称
     claude_model: str = "claude-sonnet-4-20250514"  # 或 claude-3-opus-20240229

@@ -84,11 +84,13 @@ async def main():
         role="assistant"
     )
 
-    # 阶段1：咨询专家收集自驾游需求
-    print("\n📋 阶段1：收集自驾游专属需求...")
-    consultation_complete = False
-
-    while not consultation_complete:
+    # 消息驱动的自驾游规划流程
+    print("\n🔄 启动基于消息驱动的自驾游专家协作...")
+    
+    # 先收集用户需求
+    user_requirements = None
+    
+    while not user_requirements:
         try:
             # 获取用户输入
             msg = await user(msg)
@@ -97,145 +99,261 @@ async def main():
                 print("👋 感谢使用，祝您自驾旅途愉快！")
                 return
 
-            print(f"🚗 用户回复: {msg.content}")
+            print(f"🚗 用户输入: {msg.content}")
 
             # 咨询专家处理用户回复
             msg = await consultation_expert(msg)
 
-            # 检查咨询是否完成（通过检查回复内容中的关键词）
+            # 检查咨询是否完成
             if "咨询完成" in msg.content or "制定专属旅行方案" in msg.content:
-                consultation_complete = True
-                print("✅ 自驾游需求收集完成，开始制定专属方案...")
-
-                # 提取用户的完整需求
                 user_requirements = msg.content
+                print("✅ 需求收集完成，开始专家团队协作...")
 
         except KeyboardInterrupt:
             print("\n👋 程序已退出")
             return
         except Exception as e:
-            print(f"❌ 咨询阶段错误: {e}")
-            import traceback
-            traceback.print_exc()
-            # 继续咨询
+            print(f"❌ 需求收集错误: {e}")
             msg = Msg(
                 name="咨询专家",
-                content="抱歉，刚才出现了一些问题。请重新告诉我您的自驾游需求。",
+                content="抱歉，请重新告诉我您的自驾游需求。",
                 role="assistant"
             )
 
-    # 阶段2：需求广播和自驾游专家团队协作
-    print("\n📢 阶段2：向自驾游专家团队广播完整需求...")
+    # 基于预设信息广播矩阵的专家协作
+    print("\n🎯 按照预设广播矩阵进行专家协作...")
 
     try:
-        # 使用MsgHub进行多Agent协作
+        # 使用MsgHub进行结构化的专家协作
         expert_list = list(experts.values())
-        async with MsgHub(participants=expert_list + [coordinator]):
+        async with MsgHub(participants=expert_list + [coordinator]) as hub:
 
-            # 1. 广播自驾游用户需求给所有专家
-            requirements_broadcast = Msg(
-                name="咨询专家",
-                content=f"""🚗 **自驾游需求广播**
+            # 创建用户需求的初始消息
+            initial_msg = Msg(
+                name="用户",
+                content=f"""🚗 **自驾游规划需求**
 
 {user_requirements}
 
-各位自驾游专家请注意：以上是收集的完整自驾游用户需求。
-请各自根据自驾游的特殊要求和专业领域准备相应的建议和方案。
-
-**自驾游特殊考虑因素：**
+**自驾游特殊要求：**
 - 路况和驾驶安全
+- 停车便利性和费用
+- 加油站、休息区分布
+- 驾驶时间合理控制
+- 车辆适应性考虑""",
+                role="user"
+            )
+
+            print("📢 开始结构化专家协作流程...")
+            
+            # 消息收集字典
+            expert_messages = {}
+            
+            # 第1步：当地专家首先提供基础信息（广播矩阵：当地专家 → POI专家、路线专家）
+            print("🌍 当地专家提供基础信息...")
+            local_expert = experts.get('local_expert')
+            if local_expert:
+                try:
+                    local_msg = await local_expert(initial_msg)
+                    expert_messages['local_expert'] = local_msg
+                    print("✅ 当地专家信息准备完成")
+                except Exception as e:
+                    print(f"⚠️ 当地专家处理错误: {e}")
+                    expert_messages['local_expert'] = Msg(
+                        name="当地专家", 
+                        content="当地信息收集遇到问题，将使用基本信息继续", 
+                        role="assistant"
+                    )
+            
+            # 第2步：POI专家基于当地信息进行景点研究
+            print("🏞️ POI专家进行景点研究...")
+            poi_expert = experts.get('poi_expert')
+            if poi_expert:
+                try:
+                    poi_input = Msg(
+                        name="system",
+                        content=f"""基于用户需求和当地专家信息进行景点研究：
+
+用户需求：{user_requirements}
+
+当地专家信息：{expert_messages.get('local_expert', Msg(name='default', content='无', role='assistant')).content}
+
+请提供符合自驾游特点的景点推荐，包括：
+- 景点位置坐标
+- 游览时长
 - 停车便利性
-- 加油站分布
-- 沿途休息点
-- 车辆适应性
-- 驾驶时间控制""",
-                role="assistant"
-            )
+- 门票费用
 
-            print("📢 正在向所有自驾游专家广播用户需求...")
-
-            # 向每个专家广播需求（让他们都接收到完整信息）
-            broadcast_tasks = []
-            for expert in expert_list:
-                task = expert(requirements_broadcast)
-                broadcast_tasks.append(task)
-
-            # 等待所有专家确认接收到需求
-            await asyncio.gather(*broadcast_tasks, return_exceptions=True)
-            print("✅ 自驾游需求广播完成，所有专家已接收")
-
-            # 2. 协调员分析和任务分配 - 专门针对自驾游
-            analysis_prompt = f"""用户的完整自驾游需求如下：
-
-{user_requirements}
-
-请分析自驾游的关键信息（出发地、目的地、天数、车辆、预算、偏好等），然后明确分配任务给5位自驾游专家。
-
-**自驾游专项分析要点：**
-- 路线的驾驶难度和安全性
-- 沿途景点的停车便利性
-- 加油站和服务区分布
-- 住宿的停车条件
-- 自驾成本分析（油费、过路费、停车费）
-
-为每位专家制定具体的自驾游工作重点和输出要求。"""
-
-            print("🧠 协调员开始分析自驾游需求和任务分配...")
-            analysis = await coordinator(
-                Msg(
-                    name="system",
-                    content=analysis_prompt,
-                    role="system"
-                )
-            )
-
-            # 3. 自驾游专家并行工作
-            print("🔄 自驾游专家团队开始并行工作...")
-            expert_tasks = []
-            for expert in expert_list:
-                expert_prompt = f"""基于广播的完整自驾游用户需求，请根据你的专业领域提供建议：
-
-{user_requirements}
-
-**你的自驾游专业职责：**
-- 如果你是景点研究专家：推荐适合自驾的景点，重点关注停车便利性、路况可达性
-- 如果你是路线优化专家：设计最优自驾路线，考虑路况、驾驶时间、休息点分布
-- 如果你是当地专家：提供自驾友好的美食和体验，关注停车方便的餐厅和景点
-- 如果你是住宿专家：推荐有停车场的住宿，考虑车辆安全和便利性
-- 如果你是预算分析专家：制定自驾游费用分析（油费、过路费、停车费、住宿餐饮）
-
-**自驾游专项要求：**
-1. 优先考虑驾驶安全和路况条件
-2. 重点关注停车便利性和费用
-3. 合理安排驾驶时间，避免疲劳驾驶
-4. 考虑车辆类型的适应性
-5. 提供沿途加油站和休息区信息
-6. 给出明确的自驾游专业建议"""
-
-                # 创建任务但不等待
-                task = expert(Msg(
-                    name="coordinator",
-                    content=expert_prompt,
-                    role="assistant"
-                ))
-                expert_tasks.append(task)
-
-            # 等待所有专家完成（即使有错误也继续）
-            expert_results = await asyncio.gather(*expert_tasks, return_exceptions=True)
-
-            # 4. 协调员整合自驾游方案
-            expert_advice_parts = []
-            for i, result in enumerate(expert_results):
-                if isinstance(result, Exception):
-                    # 如果是异常，记录但继续
-                    print(f"⚠️ 专家{i+1}（{expert_list[i].name}）出错: {str(result)[:100]}")
-                    continue
-                elif result is not None:
-                    content = result.content if hasattr(result, 'content') else str(result)
-                    expert_advice_parts.append(
-                        f"专家{i+1}（{expert_list[i].name}）建议：\n{content}"
+输出格式（用于后续专家）：
+- selected_pois: [(name, lat, lng, duration_hours, parking_info)]
+- total_ticket_cost: 总门票费用""",
+                        role="system"
+                    )
+                    poi_msg = await poi_expert(poi_input)
+                    expert_messages['poi_expert'] = poi_msg
+                    print("✅ POI专家研究完成")
+                except Exception as e:
+                    print(f"⚠️ POI专家处理错误: {e}")
+                    expert_messages['poi_expert'] = Msg(
+                        name="POI专家", 
+                        content="景点研究遇到问题，将使用默认推荐", 
+                        role="assistant"
                     )
 
+            # 第3步：路线专家基于POI信息进行路线规划（广播矩阵：POI专家 → 路线专家）
+            print("🛣️ 路线专家进行路线规划...")
+            route_expert = experts.get('route_expert')
+            if route_expert:
+                try:
+                    route_input = Msg(
+                        name="poi_expert",
+                        content=f"""基于POI专家提供的景点信息进行路线规划：
+
+用户需求：{user_requirements}
+
+POI专家信息：{expert_messages.get('poi_expert', Msg(name='default', content='无', role='assistant')).content}
+
+当地专家交通信息：{expert_messages.get('local_expert', Msg(name='default', content='无', role='assistant')).content}
+
+请规划最优自驾路线，包括：
+- 每日行程安排
+- 驾驶时间和距离
+- 路况分析
+- 休息点安排
+
+输出格式（用于后续专家）：
+- daily_endpoints: [(day, final_location, area)]
+- transport_cost: 交通费用估算
+- total_distance: 总里程数""",
+                        role="assistant"
+                    )
+                    route_msg = await route_expert(route_input)
+                    expert_messages['route_expert'] = route_msg
+                    print("✅ 路线专家规划完成")
+                except Exception as e:
+                    print(f"⚠️ 路线专家处理错误: {e}")
+                    expert_messages['route_expert'] = Msg(
+                        name="路线专家", 
+                        content="路线规划遇到问题，将使用基本路线", 
+                        role="assistant"
+                    )
+            
+            # 第4步：住宿专家基于路线信息推荐住宿（广播矩阵：路线专家 → 住宿专家）
+            print("🏨 住宿专家推荐住宿...")
+            hotel_expert = experts.get('hotel_expert')
+            if hotel_expert:
+                try:
+                    hotel_input = Msg(
+                        name="route_expert",
+                        content=f"""基于路线专家的终点位置推荐住宿：
+
+用户需求：{user_requirements}
+
+路线专家信息：{expert_messages.get('route_expert', Msg(name='default', content='无', role='assistant')).content}
+
+请推荐符合自驾游特点的住宿，重点考虑：
+- 停车场配备
+- 位置便利性
+- 价格合理性
+- 车辆安全保障
+
+输出格式（用于后续专家）：
+- accommodation_cost: 住宿总费用
+- parking_info: 停车信息""",
+                        role="assistant"
+                    )
+                    hotel_msg = await hotel_expert(hotel_input)
+                    expert_messages['hotel_expert'] = hotel_msg
+                    print("✅ 住宿专家推荐完成")
+                except Exception as e:
+                    print(f"⚠️ 住宿专家处理错误: {e}")
+                    expert_messages['hotel_expert'] = Msg(
+                        name="住宿专家", 
+                        content="住宿推荐遇到问题，将使用默认选择", 
+                        role="assistant"
+                    )
+
+            # 第5步：预算专家汇总所有费用（广播矩阵：所有专家 → 预算专家）
+            print("💰 预算专家进行费用分析...")
+            budget_expert = experts.get('budget_expert')
+            if budget_expert:
+                try:
+                    # 汇总所有专家的费用信息
+                    all_expert_info = "\n\n".join([
+                        f"{expert_name}信息：{msg.content}" 
+                        for expert_name, msg in expert_messages.items()
+                    ])
+                    
+                    budget_input = Msg(
+                        name="system",
+                        content=f"""基于所有专家信息进行自驾游预算分析：
+
+用户需求：{user_requirements}
+
+{all_expert_info}
+
+请分析自驾游总体费用，包括：
+- 油费和过路费
+- 停车费用
+- 门票费用
+- 住宿费用
+- 餐饮预算
+- 应急备用金
+
+如果超出用户预算，请提供削减建议：
+- 给路线专家的建议（减少景点、选择经济路线）
+- 给住宿专家的建议（降级住宿选择）
+
+输出格式：
+- total_cost: 总费用
+- budget_status: "within" 或 "over"
+- suggestions: 具体建议""",
+                        role="system"
+                    )
+                    budget_msg = await budget_expert(budget_input)
+                    expert_messages['budget_expert'] = budget_msg
+                    print("✅ 预算专家分析完成")
+                except Exception as e:
+                    print(f"⚠️ 预算专家处理错误: {e}")
+                    expert_messages['budget_expert'] = Msg(
+                        name="预算专家", 
+                        content="预算分析遇到问题，将使用基本估算", 
+                        role="assistant"
+                    )
+                
+                # 如果超预算，通知相关专家调整（广播矩阵：预算专家 → 路线、住宿专家）
+                if "over" in budget_msg.content.lower():
+                    print("⚠️ 预算超支，通知专家调整方案...")
+                    
+                    # 通知路线专家调整
+                    if route_expert:
+                        adjust_msg = Msg(
+                            name="budget_expert",
+                            content=f"预算超支，需要调整：\n{budget_msg.content}",
+                            role="assistant"
+                        )
+                        route_adjust = await route_expert(adjust_msg)
+                        expert_messages['route_expert_adjusted'] = route_adjust
+                    
+                    # 通知住宿专家调整
+                    if hotel_expert:
+                        adjust_msg = Msg(
+                            name="budget_expert",
+                            content=f"预算超支，需要调整：\n{budget_msg.content}",
+                            role="assistant"
+                        )
+                        hotel_adjust = await hotel_expert(adjust_msg)
+                        expert_messages['hotel_expert_adjusted'] = hotel_adjust
+
+            # 第6步：协调员整合所有专家信息生成最终方案
+            print("🎯 协调员整合专家信息生成最终方案...")
+            
+            # 汇总所有专家的建议
+            expert_advice_parts = []
+            for expert_name, msg in expert_messages.items():
+                content = msg.content if hasattr(msg, 'content') else str(msg)
+                expert_advice_parts.append(f"**{expert_name}建议：**\n{content}")
+            
             expert_advice = "\n\n".join(expert_advice_parts) if expert_advice_parts else "专家暂无建议"
 
             integration_prompt = f"""请基于5位自驾游专家的建议，生成完整的自驾游方案。
@@ -286,13 +404,31 @@ async def main():
 - 时间安排合理，避免疲劳驾驶
 - 信息准确实用，具有可操作性"""
 
-            final_plan = await coordinator(
-                Msg(
-                    name="system",
-                    content=integration_prompt,
-                    role="system"
+            try:
+                final_plan = await coordinator(
+                    Msg(
+                        name="system",
+                        content=integration_prompt,
+                        role="system"
+                    )
                 )
-            )
+            except Exception as e:
+                print(f"⚠️ 协调员处理时出错: {e}")
+                # 创建一个简化的最终方案
+                final_plan = Msg(
+                    name="协调员",
+                    content=f"""🚗 **自驾游规划方案**
+
+基于专家团队的建议，为您整理的自驾游方案：
+
+{expert_advice}
+
+**注意事项：**
+- 请根据实际路况调整行程
+- 注意驾驶安全，合理安排休息
+- 提前预订住宿和查看停车条件""",
+                    role="assistant"
+                )
 
         # 返回给用户
         msg = final_plan
